@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&display=swap" rel="stylesheet">
+<title>SLOT RPG</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  width: 100vw; height: 100vh; overflow: hidden; background: #000;
+  font-family: 'Noto Serif JP', 'Yu Mincho', serif; user-select: none; color: #e0d8c0;
+}
+#game {
+  width: 100%; height: 100%; position: relative;
+  background: linear-gradient(180deg, #0a0a1a 0%, #1a0a0a 100%);
+  display: flex; flex-direction: column; align-items: center;
+}
+#game-bg {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  opacity: 0.65;
+  z-index: 0; pointer-events: none;
+}
+
+#stage-display { position: absolute; top: 18px; left: 20px; display: flex; flex-direction: column; gap: 4px; z-index: 1;
+  background: rgba(0,0,0,0.7); border: 4px solid rgba(255,200,100,0.5); border-radius: 3px; padding: 8px 14px; }
+.stage-row { font-size: 16px; font-weight: 700; color: #ddd; letter-spacing: 2px; margin-bottom: 3px; }
+.stage-row.current { font-size: 20px; font-weight: 900; color: #ffd700; }
+#max-stage { font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 6px; letter-spacing: 1px; }
+
+#enemy-info { margin-top: 18px; text-align: center; min-width: 320px; z-index: 1;
+  background: rgba(0,0,0,0.7); border: 4px solid rgba(255,200,100,0.5); border-radius: 3px; padding: 8px 14px; }
+#enemy-name { font-size: 22px; font-weight: 900; color: #ff6666; letter-spacing: 4px; margin-bottom: 8px; }
+#enemy-stats { display: flex; justify-content: center; gap: 24px; align-items: center; }
+.enemy-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.enemy-stat .label { font-size: 11px; color: rgba(255,100,100,0.6); letter-spacing: 2px; }
+.enemy-stat .value { font-size: 28px; font-weight: 900; color: #ff8888; }
+.enemy-stat .rank { font-size: 32px; font-weight: 900; letter-spacing: 2px; }
+#enemy-taunt {
+  margin-top: 8px; font-size: 14px; font-weight: 700; color: rgba(255,150,150,0.6);
+  letter-spacing: 1px; font-style: italic; text-align: center; min-height: 20px;
+}
+
+#player-info { position: absolute; top: 18px; right: 20px; text-align: right; z-index: 1;
+  background: rgba(0,0,0,0.7); border: 4px solid rgba(255,200,100,0.5); border-radius: 3px; padding: 8px 14px; }
+#player-label { font-size: 13px; color: rgba(100,200,255,0.5); letter-spacing: 2px; margin-bottom: 6px; }
+#player-stats { display: flex; gap: 20px; }
+.player-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.player-stat .label { font-size: 11px; color: rgba(100,180,255,0.5); letter-spacing: 2px; }
+.player-stat .value { font-size: 22px; font-weight: 900; color: #88ccff; }
+.player-stat .rank { font-size: 32px; font-weight: 900; letter-spacing: 2px; }
+.player-stat .gain { font-size: 13px; font-weight: 700; min-height: 18px; color: rgba(100,255,150,0.8); }
+
+#slot-area { margin-top: 16px; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+#slot-label { font-size: 13px; color: rgba(255,200,100,0.5); letter-spacing: 4px; }
+
+#reels { display: flex; gap: 12px; }
+.reel {
+  width: 140px; height: 340px;
+  border: 2px solid rgba(255,200,100,0.4); border-radius: 8px;
+  background: rgba(0,0,0,0.6); overflow: hidden; position: relative;
+  box-shadow: 0 0 20px rgba(255,200,100,0.1), inset 0 0 30px rgba(0,0,0,0.5);
+  cursor: pointer;
+}
+.reel .select-line {
+  position: absolute; top: 50%; left: 4px; right: 4px;
+  height: 84px; transform: translateY(-42%);
+  border: 2px solid rgba(255,170,50,0.6); border-radius: 4px;
+  z-index: 3; pointer-events: none;
+  box-shadow: 0 0 8px rgba(255,170,50,0.2);
+}
+.reel::before, .reel::after { display: none; }
+.reel.stopped { border-color: rgba(100,255,100,0.5); box-shadow: 0 0 15px rgba(100,255,100,0.15); }
+.reel.stopped .select-line { border-color: rgba(100,255,100,0.5); box-shadow: 0 0 8px rgba(100,255,100,0.2); }
+
+.reel-strip { position: absolute; width: 100%; pointer-events: none; will-change: transform; }
+@keyframes reelSpin {
+  0% { transform: translateY(calc(-1 * var(--pattern-h))); }
+  100% { transform: translateY(0); }
+}
+.reel-item {
+  width: 140px; height: 80px;
+  display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px;
+}
+.reel-item .icon { font-size: 28px; width: 36px; text-align: center; flex-shrink: 0; }
+.reel-item .item-text { display: flex; flex-direction: column; align-items: flex-start; }
+.reel-item .item-name { font-size: 16px; font-weight: 900; color: #e8d8c0; text-align: center; }
+.reel-item .item-value { font-size: 15px; font-weight: 800; color: rgba(255,255,255,0.5); }
+
+#spin-btn {
+  padding: 14px 56px; font-family: inherit; font-size: 20px; font-weight: 900; letter-spacing: 6px;
+  border: 3px solid rgba(255,200,100,0.9); border-radius: 8px;
+  background: rgba(255,200,100,0.4); color: #ffe0a0; cursor: pointer; transition: all 0.2s;
+}
+#spin-btn:hover { background: rgba(255,200,100,0.35); border-color: rgba(255,200,100,0.9); }
+#spin-btn:disabled { opacity: 0.3; cursor: default; }
+
+#stop-btn {
+  padding: 14px 56px; font-family: inherit; font-size: 20px; font-weight: 900; letter-spacing: 6px;
+  border: 3px solid rgba(100,255,100,0.9); border-radius: 8px;
+  background: rgba(100,255,100,0.4); color: #aaffaa; cursor: pointer; transition: all 0.2s;
+}
+#stop-btn:hover { background: rgba(100,255,100,0.35); border-color: rgba(100,255,100,0.9); }
+
+#result-text { font-size: 18px; font-weight: 700; min-height: 26px; letter-spacing: 2px; text-align: center; margin-top: -14px; }
+#result-text.success { color: #ffd700; }
+#result-text.miss { color: rgba(255,255,255,0.5); }
+#spins-left { font-size: 13px; color: rgba(255,255,255,0.35); letter-spacing: 1px; }
+
+/* バトル画面 */
+#battle-overlay {
+  position: absolute; inset: 0; background: transparent;
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 90; gap: 4px; padding-top: 260px;
+}
+#battle-overlay.visible { display: flex; }
+#battle-hud {
+  position: fixed; top: 18px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 480px; margin-bottom: 20px; align-items: flex-start; z-index: 91;
+}
+.battle-side { text-align: center; min-width: 140px; }
+.battle-side .b-icon { font-size: 48px; margin-bottom: 4px; }
+.battle-side .b-name { font-size: 18px; font-weight: 900; letter-spacing: 2px; margin-bottom: 4px; }
+.battle-side .b-hp { font-size: 36px; font-weight: 900; transition: color 0.2s; }
+.battle-side .b-sub { font-size: 13px; color: rgba(255,255,255,0.4); min-height: 18px; margin-top: 4px; }
+.battle-side.enemy-side .b-name { color: #ff6666; }
+.battle-side.enemy-side .b-hp { color: #ff8888; }
+.battle-side.player-side .b-name { color: #66aaff; }
+.battle-side.player-side .b-hp { color: #88ccff; }
+#battle-action {
+  font-size: 22px; font-weight: 900; min-height: 36px;
+  letter-spacing: 3px; text-align: center;
+  -webkit-text-stroke: 5px #000; paint-order: stroke fill;
+}
+#battle-action.result-text {
+  font-size: 57px; letter-spacing: 8px;
+  -webkit-text-stroke: 6px #000;
+}
+#battle-damage {
+  font-size: 44px; font-weight: 900; min-height: 56px; letter-spacing: 2px; text-align: center;
+  -webkit-text-stroke: 5px #000; paint-order: stroke fill;
+}
+@keyframes dmgPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  30% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.dmg-pop { display: inline-block; animation: dmgPop 0.35s ease-out; }
+#battle-log {
+  width: 620px; max-height: 300px; overflow-y: auto;
+  padding: 10px 0; margin-top: 10px;
+  scrollbar-width: none;
+}
+#battle-log::-webkit-scrollbar { display: none; }
+#battle-log.battle-end {
+  border: 3px solid rgba(255,200,100,0.5); border-radius: 3px;
+  background: rgba(0,0,0,0.6); padding: 14px;
+  box-shadow: 0 0 20px rgba(255,200,100,0.08), inset 0 0 30px rgba(0,0,0,0.3);
+  overflow-y: auto; scrollbar-width: none;
+}
+#battle-log.battle-end::-webkit-scrollbar { display: none; }
+.turn-row {
+  display: flex; align-items: center; justify-content: center;
+  gap: 60px; padding: 8px 0; margin-bottom: 12px; font-weight: 700;
+}
+.turn-left { width: 250px; text-align: right; line-height: 1.6; }
+.turn-center { width: 80px; text-align: center; font-size: 48px; font-weight: 900; color: #cccccc;
+  -webkit-text-stroke: 5px #000; paint-order: stroke fill; }
+.turn-right { width: 250px; text-align: left; line-height: 1.6; }
+.turn-atk { color: #66dd88; font-size: 26px; -webkit-text-stroke: 5px #000; paint-order: stroke fill; }
+.turn-def { color: #6699ff; font-size: 26px; -webkit-text-stroke: 5px #000; paint-order: stroke fill; }
+.turn-dmg { font-size: 32px; font-weight: 900; color: #ff5555; -webkit-text-stroke: 5px #000; paint-order: stroke fill; }
+.turn-block { font-size: 26px; color: #999999; -webkit-text-stroke: 5px #000; paint-order: stroke fill; }
+.turn-cost { font-size: 20px; color: #aaaaaa; -webkit-text-stroke: 5px #000; paint-order: stroke fill; }
+
+/* 結果オーバーレイ */
+#overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.95);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  z-index: 110; opacity: 0; pointer-events: none; transition: opacity 0.5s;
+}
+#overlay.visible { opacity: 1; pointer-events: auto; }
+#overlay-text { font-size: 42px; font-weight: 900; letter-spacing: 8px; }
+#overlay-text.win { color: #ffd700; text-shadow: 0 0 20px rgba(255,215,0,0.5), 0 0 40px rgba(255,215,0,0.3), 0 3px 8px rgba(0,0,0,1), 0 0 16px rgba(0,0,0,0.9); }
+#overlay-text.lose { color: #ff4444; text-shadow: 0 0 30px rgba(255,68,68,0.4); }
+#overlay-log {
+  width: 600px; max-height: 340px; overflow-y: auto;
+  font-size: 20px; line-height: 2.2; color: rgba(255,255,255,0.7);
+  padding: 16px 24px; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+  background: rgba(255,255,255,0.03); display: none; cursor: pointer;
+}
+#overlay-hint { font-size: 13px; color: rgba(255,255,255,0.25); letter-spacing: 2px; }
+
+#title-screen {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: linear-gradient(180deg, rgba(0,0,0,0.28), rgba(0,0,0,0.28)), url(img/title.webp) center/cover no-repeat; z-index: 200; gap: 40px;
+  cursor: pointer;
+}
+#title-screen h1 { font-size: 76px; color: #c0c0c0; font-weight: 900; letter-spacing: 6px;
+  -webkit-text-stroke: 6px #000; paint-order: stroke fill;
+  text-shadow: 0 0 40px rgba(255,200,100,0.3); }
+.subtitle { font-size: 28px; font-weight: 700; color: rgba(255,255,255,0.6); letter-spacing: 6px; margin-top: -10px;
+  -webkit-text-stroke: 3px #000; paint-order: stroke fill; }
+
+#gameover-screen {
+  position: absolute; inset: 0; display: none; flex-direction: column;
+  align-items: center; justify-content: center; background: rgba(0,0,0,0.95); z-index: 200; gap: 24px;
+  cursor: pointer;
+}
+#gameover-screen h2 { font-size: 72px; font-weight: 900; letter-spacing: 16px; color: #000; }
+@keyframes clearGlow {
+  0% { text-shadow: 0 0 20px rgba(255,215,0,0.4), 0 0 40px rgba(255,215,0,0.2); }
+  50% { text-shadow: 0 0 50px rgba(255,215,0,1), 0 0 100px rgba(255,215,0,0.6), 0 0 150px rgba(255,215,0,0.3); }
+  100% { text-shadow: 0 0 20px rgba(255,215,0,0.4), 0 0 40px rgba(255,215,0,0.2); }
+}
+#gameover-screen h2.clear-glow { animation: clearGlow 3s ease-in-out infinite; }
+#gameover-stats { display: none; }
+#gameover-hint { font-size: 13px; color: rgba(255,255,255,0.25); letter-spacing: 2px; }
+
+/* Battle mode transparent box backgrounds */
+.battle-bg-box {
+  background: rgba(0,0,0,0.7); border-radius: 3px; padding: 8px 14px;
+  border: 4px solid rgba(255,200,100,0.5);
+  box-shadow: 0 0 16px rgba(255,200,100,0.1);
+}
+#battle-hud .battle-side.battle-bg-box { padding: 12px 18px; }
+
+@keyframes rainbow { 0%{color:#ff6b6b} 16%{color:#ffa94d} 33%{color:#ffd43b} 50%{color:#69db7c} 66%{color:#4dabf7} 83%{color:#da77f2} 100%{color:#ff6b6b} }
+.rank-rainbow { animation: rainbow 2s linear infinite; }
+
+/* 特性表示 */
+#trait-display {
+  position: absolute; inset: 0; display: none; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  z-index: 95; background: rgba(0,0,0,0.7); pointer-events: none;
+}
+#trait-display.visible { display: flex; }
+#trait-name { font-size: 42px; font-weight: 900; color: #ff6666; letter-spacing: 6px;
+  -webkit-text-stroke: 4px #000; paint-order: stroke fill; opacity: 0; transform: translateX(-20px);
+  transition: opacity 0.5s, transform 0.5s; }
+#trait-desc { font-size: 22px; font-weight: 700; color: #ffcc88; letter-spacing: 3px;
+  -webkit-text-stroke: 3px #000; paint-order: stroke fill; opacity: 0; transform: translateX(-20px);
+  transition: opacity 0.5s, transform 0.5s; }
+#trait-display.show-name #trait-name { opacity: 1; transform: translateX(0); }
+#trait-display.show-desc #trait-desc { opacity: 1; transform: translateX(0); }
+
+/* 戦闘中の特性ラベル */
+#battle-trait {
+  position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+  font-size: 14px; font-weight: 700; color: rgba(255,150,100,0.7); letter-spacing: 2px;
+  background: rgba(0,0,0,0.6); border: 2px solid rgba(255,150,100,0.3); border-radius: 3px;
+  padding: 6px 16px; z-index: 91; display: none;
+  -webkit-text-stroke: 1px #000; paint-order: stroke fill;
+}
+
+/* イベントスロット */
+#event-overlay {
+  position: absolute; inset: 0; background: transparent;
+  display: none; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  z-index: 195;
+}
+#event-overlay.visible { display: flex; }
+#event-title { font-size: 28px; font-weight: 900; color: #ffa500; letter-spacing: 6px;
+  -webkit-text-stroke: 3px #000; paint-order: stroke fill; }
+#event-reel {
+  width: 300px; height: 180px;
+  border: 4px solid rgba(255,200,100,0.5); border-radius: 8px;
+  background: rgba(0,0,0,0.7); overflow: hidden; position: relative;
+}
+#event-reel .select-line {
+  position: absolute; top: 50%; left: 6px; right: 6px;
+  height: 60px; transform: translateY(-50%);
+  border: 2px solid rgba(255,200,100,0.6); border-radius: 4px;
+  z-index: 3; pointer-events: none;
+}
+#event-strip { position: absolute; width: 100%; pointer-events: none; will-change: transform; }
+.event-item {
+  width: 300px; height: 60px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 900;
+  -webkit-text-stroke: 3px #000; paint-order: stroke fill;
+}
+#event-hint { font-size: 14px; color: rgba(255,255,255,0.4); letter-spacing: 2px; }
+@keyframes eventSpin {
+  0% { transform: translateY(calc(-1 * var(--ev-h))); }
+  100% { transform: translateY(0); }
+}
+
+/* 不屈の闘志スロット */
+#fukutsu-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.92);
+  display: none; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  z-index: 200;
+}
+#fukutsu-overlay.visible { display: flex; }
+#fukutsu-title { font-size: 42px; font-weight: 900; color: #ffd700; letter-spacing: 8px;
+  text-shadow: 0 0 30px rgba(255,215,0,0.5), 0 0 60px rgba(255,215,0,0.2); }
+#fukutsu-reel {
+  width: 320px; height: 200px;
+  border: 3px solid #ffd700; border-radius: 14px;
+  background: rgba(0,0,0,0.85); overflow: hidden; position: relative;
+  box-shadow: 0 0 50px rgba(255,215,0,0.25), inset 0 0 30px rgba(0,0,0,0.5);
+}
+#fukutsu-reel .select-line {
+  position: absolute; top: 50%; left: 6px; right: 6px;
+  height: 70px; transform: translateY(-50%);
+  border: 2px solid #ffd700; border-radius: 6px;
+  z-index: 3; pointer-events: none;
+  box-shadow: 0 0 12px rgba(255,215,0,0.3);
+}
+#fukutsu-strip { position: absolute; width: 100%; pointer-events: none; will-change: transform; }
+.fukutsu-item {
+  width: 320px; height: 70px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px; font-weight: 900;
+}
+#fukutsu-hint { font-size: 16px; color: rgba(255,255,255,0.4); letter-spacing: 3px; }
+@keyframes fukutsuSpin {
+  0% { transform: translateY(calc(-1 * var(--fk-h))); }
+  100% { transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<div id="game">
+  <div id="game-bg"></div>
+  <div id="stage-display"></div>
+  <div id="max-stage" style="position:absolute;top:0;left:20px;z-index:1"></div>
+  <div id="enemy-info">
+    <div id="enemy-name"></div>
+    <div id="enemy-stats">
+      <div class="enemy-stat"><div class="label">体力</div><div class="rank" id="e-rank-hp"></div><div class="value" id="e-hp">0</div></div>
+      <div class="enemy-stat"><div class="label">攻撃</div><div class="rank" id="e-rank-atk"></div><div class="value" id="e-atk">0</div></div>
+      <div class="enemy-stat"><div class="label">防御</div><div class="rank" id="e-rank-def"></div><div class="value" id="e-def">0</div></div>
+    </div>
+    <div id="enemy-taunt"></div>
+    <div id="enemy-trait-box" style="display:none;margin-top:6px;font-size:13px;font-weight:700;color:#ff9966;background:rgba(0,0,0,0.5);border:2px solid rgba(255,150,100,0.4);border-radius:3px;padding:4px 12px;letter-spacing:1px"></div>
+  </div>
+  <div id="player-info">
+    <div id="player-label">自分</div>
+    <div id="player-stats">
+      <div class="player-stat">
+        <div class="label">体力</div>
+        <div class="rank" id="rank-hp"></div>
+        <div class="value" id="p-hp">10</div>
+        <div class="gain" id="gain-hp"></div>
+        <div class="loss-list" id="loss-hp" style="display:none;font-size:13px;font-weight:700;line-height:1.4;color:#ff5555"></div>
+      </div>
+      <div class="player-stat">
+        <div class="label">攻撃</div>
+        <div class="rank" id="rank-atk"></div>
+        <div class="value" id="p-atk">10</div>
+        <div class="gain" id="gain-atk"></div>
+        <div class="loss-list" id="loss-atk" style="display:none;font-size:13px;font-weight:700;line-height:1.4;color:#ff5555"></div>
+      </div>
+      <div class="player-stat">
+        <div class="label">防御</div>
+        <div class="rank" id="rank-def"></div>
+        <div class="value" id="p-def">10</div>
+        <div class="gain" id="gain-def"></div>
+        <div class="loss-list" id="loss-def" style="display:none;font-size:13px;font-weight:700;line-height:1.4;color:#6699ff"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="slot-area">
+    <div id="slot-label">クリックで停止</div>
+    <div id="reels">
+      <div class="reel" id="reel0"><div class="select-line"></div><div class="reel-strip"></div></div>
+      <div class="reel" id="reel1"><div class="select-line"></div><div class="reel-strip"></div></div>
+      <div class="reel" id="reel2"><div class="select-line"></div><div class="reel-strip"></div></div>
+    </div>
+    <button id="spin-btn">回す</button>
+    <button id="stop-btn" style="display:none">止める</button>
+    <div id="result-text"></div>
+    <div id="spins-left"></div>
+    <div id="rules-hint" style="margin-top:12px;font-size:11px;color:rgba(255,255,255,0.3);text-align:center;line-height:1.8;letter-spacing:1px">
+      3つ揃い → 効果1.5倍｜防御消耗 → 吸収分だけ減少｜戦闘後 → 攻撃が代償分だけ減少
+    </div>
+  </div>
+
+  <div id="trait-display"><div id="trait-name"></div><div id="trait-desc"></div></div>
+  <div id="battle-trait"></div>
+
+  <div id="battle-overlay">
+    <div id="battle-hud">
+      <div class="battle-side enemy-side">
+        <div class="b-name" id="b-enemy-name"></div>
+        <div class="b-hp" id="b-enemy-hp"></div>
+        <div class="b-sub" id="b-enemy-sub"></div>
+      </div>
+      <div class="battle-side player-side">
+        <div class="b-name">自分</div>
+        <div class="b-hp" id="b-player-hp"></div>
+        <div class="b-sub" id="b-player-sub"></div>
+      </div>
+    </div>
+    <div id="battle-action"></div>
+    <div id="battle-damage"></div>
+    <div id="battle-log"></div>
+  </div>
+
+  <div id="event-overlay">
+    <div id="event-title">イベントスロット</div>
+    <div id="event-reel"><div class="select-line"></div><div id="event-strip"></div></div>
+    <div id="event-hint"></div>
+  </div>
+
+  <div id="fukutsu-overlay">
+    <div id="fukutsu-title">不屈の闘志</div>
+    <div id="fukutsu-reel"><div class="select-line"></div><div id="fukutsu-strip"></div></div>
+    <div id="fukutsu-hint">クリックで止める</div>
+  </div>
+
+  <div id="overlay">
+    <div id="overlay-text"></div>
+    <div id="overlay-log"></div>
+    <div id="overlay-hint"></div>
+  </div>
+
+  <div id="next-journey" style="position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:250;background:rgba(0,0,0,0.95);opacity:0;transition:opacity 0.3s">
+    <div style="font-size:48px;font-weight:900;color:#000;letter-spacing:8px;-webkit-text-stroke:0;color:#ffffff">そして次の旅が始まるのです</div>
+  </div>
+
+  <div id="title-screen">
+    <h1>スロット RPG</h1>
+    <div class="subtitle">運命を回せ</div>
+    <div style="font-size:14px;color:rgba(255,255,255,0.2);margin-top:20px">クリックではじまる</div>
+    <div style="position:absolute;bottom:18px;left:18px;display:flex;gap:8px">
+      <button class="dev-btn" data-stage="4" data-stats="60" style="font-family:inherit;font-size:11px;padding:6px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:4px;background:rgba(0,0,0,0.3);color:rgba(255,255,255,0.25);cursor:pointer;letter-spacing:1px">DEV:5章</button>
+      <button class="dev-btn" data-stage="9" data-stats="120" style="font-family:inherit;font-size:11px;padding:6px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:4px;background:rgba(0,0,0,0.3);color:rgba(255,255,255,0.25);cursor:pointer;letter-spacing:1px">DEV:10章</button>
+      <button class="dev-btn" data-stage="14" data-stats="210" style="font-family:inherit;font-size:11px;padding:6px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:4px;background:rgba(0,0,0,0.3);color:rgba(255,255,255,0.25);cursor:pointer;letter-spacing:1px">DEV:15章</button>
+      <button class="dev-btn" data-stage="19" data-stats="330" style="font-family:inherit;font-size:11px;padding:6px 14px;border:1px solid rgba(255,255,255,0.15);border-radius:4px;background:rgba(0,0,0,0.3);color:rgba(255,255,255,0.25);cursor:pointer;letter-spacing:1px">DEV:20章</button>
+    </div>
+  </div>
+
+  <div id="gameover-screen">
+    <h2>おわり</h2>
+    <div id="gameover-stats"></div>
+    <div id="gameover-hint" style="font-size:13px;color:rgba(255,255,255,0.25)">クリックでもう一度</div>
+  </div>
+</div>
+
+<script>
+const ITEMS = [
+  { id: 'sword1',  icon: '🔪', name: '鉄の剣',       type: 'atk', value: 5,  color: '#ff6666' },
+  { id: 'sword2',  icon: '⚔️', name: '鋼の剣',       type: 'atk', value: 10, color: '#ff4444' },
+  { id: 'sword3',  icon: '🗡️', name: '炎の大剣',     type: 'atk', value: 18, color: '#ff2222' },
+  { id: 'shield1', icon: '🟤', name: '木の盾',       type: 'def', value: 5,  color: '#66aaff' },
+  { id: 'shield2', icon: '⬜', name: '鉄の盾',       type: 'def', value: 10, color: '#4488ff' },
+  { id: 'shield3', icon: '🔷', name: '聖盾',         type: 'def', value: 18, color: '#2266ff' },
+  { id: 'heal1',   icon: '🧪', name: '回復薬',       type: 'hp', value: 10, color: '#66dd88' },
+  { id: 'heal2',   icon: '💊', name: '大回復薬',     type: 'hp', value: 20, color: '#44cc66' },
+  { id: 'miss',    icon: '💨', name: 'ハズレ',       type: 'none', value: 0, color: '#666' },
+  { id: 'miss2',   icon: '💀', name: 'ハズレ',       type: 'none', value: 0, color: '#666' },
+];
+const REEL_PATTERN = [...ITEMS];
+function shuffleArray(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+shuffleArray(REEL_PATTERN);
+
+const ENEMIES = [
+  { name: 'スライム',       hp: 20,  atk: 36,  def: 28, icon: '🟢', bg: 'img/stage01.webp',
+    taunt: '僕は魔物の中でも最弱だよ？', lose: '負けちゃった……', win: 'え……僕が勝っちゃったの？' },
+  { name: 'コウモリ',       hp: 28,  atk: 47,  def: 36, icon: '🦇', bg: 'img/stage02.webp',
+    taunt: 'お前、あの村の出身か？', lose: '見ているぞ……死後もずっと……', win: 'お前の血は甘かった……' },
+  { name: 'ゴブリン',       hp: 38,  atk: 57,  def: 54, icon: '👹', bg: 'img/stage03.webp',
+    taunt: 'よこせ……金目のものを', lose: '見逃してくれェェェ', win: 'ヒヒヒ……全部いただきだ' },
+  { name: 'オオカミ',       hp: 55,  atk: 90,  def: 76, icon: '🐺', bg: 'img/stage04.webp',
+    taunt: 'なんでこんな所に人間が？', lose: '人間に殺されるとは……愛していたのに', win: '群れの掟……弱き者は喰われる' },
+  { name: 'オーク',         hp: 65,  atk: 102, def: 96, icon: '🐗', bg: 'img/stage05.webp',
+    taunt: 'ここは通さない！', lose: 'あの方に任されたというのに……', win: 'あの方の期待に応えた……' },
+  { name: 'サソリ',         hp: 60,  atk: 111, def: 104, icon: '🦂', bg: 'img/stage06.webp',
+    taunt: 'ここを取り返そうってのか？人間風情が', lose: 'おのれ……人間め', win: '毒が回ったようだな……' },
+  { name: 'ダークエルフ',   hp: 80,  atk: 135, def: 130, icon: '🧝', bg: 'img/stage07.webp',
+    taunt: 'ここは私の街だ……汚い足で踏み入れるな', lose: '魔王様がきっとお前を殺すだろう', win: '二度とこの街に来るな' },
+  { name: 'ミノタウロス',   hp: 95,  atk: 144, def: 144, icon: '🐂', bg: 'img/stage08.webp',
+    taunt: '迷宮に迷い込んだな馬鹿が……', lose: '100年ぶりだな、負けたのは', win: 'この迷宮の骨がまた一つ増えた' },
+  { name: 'ワイバーン',     hp: 110, atk: 158, def: 156, icon: '🦅', bg: 'img/stage09.webp',
+    taunt: 'エサになるとも知らずに……呑気な奴だ', lose: '天は私の領域だった……', win: '地に墜ちろ' },
+  { name: 'ゴーレム',       hp: 140, atk: 116, def: 240, icon: '🗿', bg: 'img/stage10.webp',
+    taunt: '排除対象……確認しました', lose: '自壊します……', win: '排除……完了しました' },
+  { name: 'メデューサ',     hp: 100, atk: 189, def: 164, icon: '🐍', bg: 'img/stage11.webp',
+    taunt: 'え？ゴーレムを倒したの？只者じゃないね', lose: 'あーあ、負けちゃった', win: 'いい石像になったじゃない',
+    trait: '石化の視線', traitDesc: '3ターンに1回、攻撃をスキップされる', traitId: 'petrify' },
+  { name: 'リッチ',         hp: 120, atk: 203, def: 176, icon: '💀', bg: 'img/stage12.webp',
+    taunt: 'さっきから馬鹿騒ぎしているのはお前か？', lose: 'この本だけは守ってくれ', win: '静かになった……読書の続きだ',
+    trait: '死霊回復', traitDesc: '毎ターンHP5回復', traitId: 'regen5' },
+  { name: 'キメラ',         hp: 150, atk: 185, def: 200, icon: '🦁', bg: 'img/stage13.webp',
+    taunt: '私もかつては人間だった……だがもう忘れた', lose: 'お前……知っている顔だな、ガトリ村の者か？', win: 'また人間の味を思い出してしまった',
+    trait: '三頭の猛攻', traitDesc: '3ターンに1回、2回攻撃', traitId: 'doubleAtk' },
+  { name: 'ドラゴン',       hp: 180, atk: 219, def: 220, icon: '🐉', bg: 'img/stage14.webp',
+    taunt: '潰してやる', lose: 'お前人間離れしてるな', win: '虫けらが',
+    trait: '竜鱗', traitDesc: '最初の5ターン、受けるダメージ半減', traitId: 'dragonScale' },
+  { name: '魔王',           hp: 200, atk: 230, def: 230, icon: '😈', bg: 'img/stage15.webp',
+    taunt: 'ようやく来たか、勇者気取り', lose: '私は魔王ではない、ここから始まる本当の闘い', win: '魔王には何者も勝てない……',
+    trait: '威圧', traitDesc: '攻撃力が10%減った状態で開始', traitId: 'intimidate' },
+  { name: '四天王イグニス', hp: 180, atk: 276, def: 210, icon: '🔥', bg: 'img/stage16.webp',
+    taunt: '貴様の村を燃やしたのは私だ、憎いか？', lose: '神殺しは罪だ', win: '荼毘に付せ',
+    trait: '灼熱', traitDesc: '攻撃するたび防御が追加で5減る', traitId: 'scorch' },
+  { name: '四天王グラキエ', hp: 170, atk: 254, def: 270, icon: '❄️', bg: 'img/stage17.webp',
+    taunt: '太古より人は奴隷だった', lose: '封印されし真の魔王に勝てると思うな', win: 'おやすみ、永遠に',
+    trait: '凍結', traitDesc: '4ターンに1回、攻撃をスキップされる', traitId: 'freeze' },
+  { name: '四天王テラ',     hp: 220, atk: 230, def: 310, icon: '🌍', bg: 'img/stage18.webp',
+    taunt: '人も魔物も神の前では塵に過ぎない', lose: '塵が楯突くなよ', win: 'だから塵だと言っている',
+    trait: '大地の再生', traitDesc: '毎ターンHP10回復', traitId: 'earthRegen' },
+  { name: '四天王カエルム', hp: 160, atk: 323, def: 200, icon: '⚡', bg: 'img/stage19.webp',
+    taunt: 'お前、人を超えようとしているな？', lose: '人を超えし者と神を従えし者の戦い、見ものだな', win: '雷は全てを鎮めてきた',
+    trait: '雷速', traitDesc: '常に先手で2回攻撃', traitId: 'thunderSpeed' },
+  { name: '大魔王',         hp: 350, atk: 357, def: 330, icon: '👿', bg: 'img/stage20.webp',
+    taunt: '隷属しろ、動物', lose: 'お前なんかが従えられるのか？このカオスを', win: 'やはり動物……ひれ伏す姿が似合っている',
+    trait: '絶対支配', traitDesc: 'HP半分以下でATK1.5倍＋毎ターンHP8回復', traitId: 'absolute' },
+];
+
+// Rank system
+const RANKS = [
+  { max: 30,  rank: 'G',   color: '#aaaaaa' },
+  { max: 60,  rank: 'F',   color: '#55aaff' },
+  { max: 90,  rank: 'E',   color: '#33cc55' },
+  { max: 120, rank: 'D',   color: '#cccc00' },
+  { max: 150, rank: 'C',   color: '#ff7700' },
+  { max: 180, rank: 'B',   color: '#ee2222' },
+  { max: 210, rank: 'A',   color: '#ff55aa' },
+  { max: 240, rank: 'S',   color: '#e0e0e0' },
+  { max: 270, rank: 'SS',  color: '#ffcc00' },
+  { max: 300, rank: 'SSS', color: 'rainbow' },
+];
+
+function getRankExtended(val) {
+  if (val <= 300) return getRank(val);
+  const tier = Math.floor((val - 301) / 30) + 4;
+  return { rank: `S${tier}`, color: 'rainbow' };
+}
+
+function getRank(val) {
+  for (const r of RANKS) { if (val <= r.max) return r; }
+  return RANKS[RANKS.length - 1];
+}
+
+function applyRank(el, val) {
+  const r = getRankExtended(val);
+  el.textContent = r.rank;
+  el.classList.remove('rank-rainbow');
+  if (r.color === 'rainbow') {
+    el.style.color = '';
+    el.classList.add('rank-rainbow');
+  } else {
+    el.style.color = r.color;
+  }
+}
+
+// BGM
+let audioCtx = null;
+let bgmNodes = [];
+let bgmPlaying = false;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function startBgm() {
+  if (bgmPlaying) return;
+  bgmPlaying = true;
+  const ctx = getAudioCtx();
+  const now = ctx.currentTime;
+  const dur = 60;
+
+  const chords = [
+    [261.6, 329.6, 392.0, 493.9],
+    [220.0, 261.6, 329.6, 440.0],
+    [174.6, 261.6, 329.6, 415.3],
+    [196.0, 246.9, 293.7, 392.0],
+  ];
+  const chordDur = dur / (chords.length * 3);
+
+  for (let rep = 0; rep < 3; rep++) {
+    for (let ci = 0; ci < chords.length; ci++) {
+      for (const freq of chords[ci]) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+        const start = now + (rep * chords.length + ci) * chordDur;
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.linearRampToValueAtTime(0.015, start + 0.6);
+        gain.gain.linearRampToValueAtTime(0.012, start + chordDur - 0.2);
+        gain.gain.linearRampToValueAtTime(0.0001, start + chordDur);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(start); osc.stop(start + chordDur + 0.1);
+        bgmNodes.push(osc);
+      }
+    }
+  }
+
+  const melody = [523.3, 587.3, 659.3, 784.0, 659.3, 587.3, 523.3, 493.9, 440.0, 523.3, 587.3, 659.3];
+  const noteDur = dur / melody.length;
+  for (let i = 0; i < melody.length; i++) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(melody[i], now);
+    const start = now + i * noteDur;
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.linearRampToValueAtTime(0.02, start + 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.006, start + noteDur * 0.7);
+    gain.gain.linearRampToValueAtTime(0.0001, start + noteDur);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(start); osc.stop(start + noteDur + 0.1);
+    bgmNodes.push(osc);
+  }
+}
+
+function stopBgm() {
+  for (const n of bgmNodes) { try { n.stop(); } catch(e) {} }
+  bgmNodes = []; bgmPlaying = false;
+}
+
+const ITEM_H = 80;
+const REEL_H = 340;
+const REEL_CENTER = REEL_H / 2;
+const SPINS_PER_STAGE = 3;
+
+let player = { hp: 10, atk: 10, def: 10 };
+let stage = 0;
+let spinsLeft = SPINS_PER_STAGE;
+let spinning = false;
+let battleReady = false;
+let reelStopped = [false, false, false];
+let reelStoppedItem = [null, null, null];
+let reelItems = [[], [], []];
+let stageGains = [];
+let resultPhase = '';
+let battleWon = false;
+let maxStageReached = parseInt(localStorage.getItem('slotRpgMaxStage') || '0');
+
+const $ = id => document.getElementById(id);
+const stageDisplay = $('stage-display');
+const enemyNameEl = $('enemy-name');
+const eHp = $('e-hp'); const eAtk = $('e-atk'); const eDef = $('e-def');
+const pHp = $('p-hp'); const pAtk = $('p-atk'); const pDef = $('p-def');
+const spinBtn = $('spin-btn');
+const resultText = $('result-text');
+const spinsLeftEl = $('spins-left');
+const overlay = $('overlay');
+const overlayText = $('overlay-text');
+const overlayLog = $('overlay-log');
+const overlayHint = $('overlay-hint');
+const titleScreen = $('title-screen');
+const gameoverScreen = $('gameover-screen');
+const gameoverStats = $('gameover-stats');
+const battleOverlay = $('battle-overlay');
+const battleLog = $('battle-log');
+const battleAction = $('battle-action');
+const battleDamage = $('battle-damage');
+const gainHp = $('gain-hp'); const gainAtk = $('gain-atk'); const gainDef = $('gain-def');
+const rankHp = $('rank-hp'); const rankAtk = $('rank-atk'); const rankDef = $('rank-def');
+
+function updateUI() {
+  pHp.textContent = player.hp;
+  pAtk.textContent = player.atk;
+  pDef.textContent = player.def;
+  applyRank(rankHp, player.hp);
+  applyRank(rankAtk, player.atk);
+  applyRank(rankDef, player.def);
+
+  // BGM for chapter 18+
+  if (stage >= 17 && !bgmPlaying) startBgm();
+  else if (stage < 17 && bgmPlaying) stopBgm();
+
+  const enemy = ENEMIES[Math.min(stage, ENEMIES.length - 1)];
+  enemyNameEl.textContent = `第${stage + 1}章　${enemy.name}`;
+  eHp.textContent = enemy.hp;
+  eAtk.textContent = enemy.atk;
+  eDef.textContent = enemy.def;
+  applyRank($('e-rank-hp'), enemy.hp);
+  applyRank($('e-rank-atk'), enemy.atk);
+  applyRank($('e-rank-def'), enemy.def);
+  $('enemy-taunt').textContent = `「${enemy.taunt}」`;
+  const traitBox = $('enemy-trait-box');
+  traitBox.style.display = 'none';
+  if (stage + 1 > maxStageReached) {
+    maxStageReached = stage + 1;
+    localStorage.setItem('slotRpgMaxStage', String(maxStageReached));
+  }
+  $('max-stage').textContent = `過去最高: 第${maxStageReached}章`;
+  $('max-stage').style.top = ($('stage-display').offsetHeight + 22) + 'px';
+  if (!eventOverlay.classList.contains('visible')) {
+    $('game-bg').style.backgroundImage = enemy.bg ? `url(${enemy.bg})` : '';
+  }
+
+  let html = '';
+  for (let i = 0; i < 5; i++) {
+    const s = stage + i;
+    if (s >= ENEMIES.length) break;
+    const e = ENEMIES[s];
+    const cls = i === 0 ? 'current' : 'next';
+    const arrow = i === 0 ? '▶' : '　';
+    const opacity = i === 0 ? 1 : Math.max(0.5, 1 - i * 0.1);
+    html += `<div class="stage-row ${cls}" style="opacity:${opacity}">${arrow} 第${s+1}章 ${e.name} <span style="font-size:0.75em">体${e.hp} 攻${e.atk} 防${e.def}</span></div>`;
+  }
+  stageDisplay.innerHTML = html;
+
+  spinsLeftEl.textContent = `残り回数: ${spinsLeft}`;
+  const stopBtn = $('stop-btn');
+  if (spinning) {
+    spinBtn.style.display = 'none';
+    stopBtn.style.display = '';
+  } else if (spinsLeft <= 0) {
+    battleReady = true;
+    spinBtn.style.display = '';
+    stopBtn.style.display = 'none';
+    spinBtn.textContent = '戦う';
+    spinBtn.disabled = false;
+    spinBtn.style.borderColor = 'rgba(255,80,80,0.9)';
+    spinBtn.style.color = '#ffaaaa';
+    spinBtn.style.background = 'rgba(255,80,80,0.4)';
+  } else if (spinsLeft > 0) {
+    battleReady = false;
+    spinBtn.style.display = '';
+    stopBtn.style.display = 'none';
+    spinBtn.textContent = '回す';
+    spinBtn.disabled = false;
+    spinBtn.style.borderColor = '';
+    spinBtn.style.color = '';
+    spinBtn.style.background = '';
+  } else {
+    battleReady = false;
+    spinBtn.style.display = 'none';
+    stopBtn.style.display = 'none';
+  }
+
+  const totals = { hp: 0, atk: 0, def: 0 };
+  let hasM = { hp: false, atk: false, def: false };
+  for (const g of stageGains) {
+    if (totals[g.type] !== undefined) { totals[g.type] += g.val; if (g.matched) hasM[g.type] = true; }
+  }
+  gainHp.textContent = totals.hp > 0 ? `+${totals.hp}` : '';
+  gainHp.style.color = hasM.hp ? '#ffd700' : '';
+  gainAtk.textContent = totals.atk > 0 ? `+${totals.atk}` : '';
+  gainAtk.style.color = hasM.atk ? '#ffd700' : '';
+  gainDef.textContent = totals.def > 0 ? `+${totals.def}` : '';
+  gainDef.style.color = hasM.def ? '#ffd700' : '';
+}
+
+function makeReelItem(item) {
+  const v = item.type === 'none' ? '' : item.type === 'atk' ? `攻撃+${item.value}` : item.type === 'def' ? `防御+${item.value}` : `体力+${item.value}`;
+  return `<div class="reel-item"><div class="icon">${item.icon}</div><div class="item-text"><div class="item-name" style="color:${item.color}">${item.name}</div><div class="item-value" style="color:${item.color}88">${v}</div></div></div>`;
+}
+
+function buildReelStrip(reelIdx) {
+  const reelEl = $('reel' + reelIdx);
+  const strip = reelEl.querySelector('.reel-strip');
+  const patLen = REEL_PATTERN.length;
+  const offset = reelIdx * Math.floor(patLen / 3);
+  const shifted = [];
+  for (let i = 0; i < patLen; i++) shifted.push(REEL_PATTERN[(i + offset) % patLen]);
+
+  let html = '';
+  for (let c = 0; c < 3; c++) for (let j = 0; j < patLen; j++) html += makeReelItem(shifted[j]);
+  strip.innerHTML = html;
+  reelItems[reelIdx] = shifted;
+
+  const totalH = patLen * ITEM_H;
+  const s = stage; // 0-indexed
+  const speed = 0.007745 * s * s - 0.276106 * s + 3.25; // 二次曲線: 1章3.25→12章1.15→20章0.8
+  strip.style.transition = 'none';
+  strip.style.animation = 'none';
+  strip.offsetHeight;
+  strip.style.setProperty('--pattern-h', `${totalH}px`);
+  strip.style.animation = `reelSpin ${speed}s linear infinite`;
+  reelEl.classList.remove('stopped');
+}
+
+function stopReel(reelIdx) {
+  if (!spinning || reelStopped[reelIdx]) return;
+  reelStopped[reelIdx] = true;
+  const reelEl = $('reel' + reelIdx);
+  const strip = reelEl.querySelector('.reel-strip');
+
+  const matrix = new DOMMatrix(getComputedStyle(strip).transform);
+  const currentY = matrix.m42;
+  strip.style.animation = 'none';
+  strip.style.transition = 'none';
+  strip.style.transform = `translateY(${currentY}px)`;
+  strip.offsetHeight;
+
+  const patLen = REEL_PATTERN.length;
+  const rawIdx = (REEL_CENTER - ITEM_H / 2 - currentY) / ITEM_H;
+  const nearestAbsIdx = Math.round(rawIdx);
+  const patIdx = ((nearestAbsIdx % patLen) + patLen) % patLen;
+  reelStoppedItem[reelIdx] = reelItems[reelIdx][patIdx];
+
+  const snapY = REEL_CENTER - ITEM_H / 2 - nearestAbsIdx * ITEM_H;
+  strip.style.transition = 'transform 0.25s cubic-bezier(0.2, 0.8, 0.3, 1)';
+  strip.style.transform = `translateY(${snapY}px)`;
+  reelEl.classList.add('stopped');
+
+  if (reelStopped[0] && reelStopped[1] && reelStopped[2]) onAllReelsStopped();
+}
+
+function onAllReelsStopped() {
+  spinning = false;
+  const a = reelStoppedItem[0], b = reelStoppedItem[1], c = reelStoppedItem[2];
+  const matched = a.id === b.id && b.id === c.id;
+  const mult = matched ? 1.5 : 1.0;
+  const applied = [];
+  for (let i = 0; i < 3; i++) {
+    const item = reelStoppedItem[i];
+    if (item.type !== 'none') {
+      const val = Math.round(item.value * mult);
+      applyItemWithValue(item.type, val);
+      applied.push(`${item.name}(${itemEffectText(item.type, val)})`);
+      stageGains.push({ type: item.type, val, matched });
+    }
+  }
+  if (applied.length === 0) { resultText.textContent = 'ハズレ…'; resultText.className = 'miss'; }
+  else if (matched) { resultText.textContent = `揃った！1.5倍！ ${applied.join(' ')}`; resultText.className = 'success'; }
+  else { resultText.textContent = applied.join('　'); resultText.className = 'miss'; }
+  spinsLeft--;
+  updateUI();
+  // 2回目以降は「回す」ボタンで手動開始
+}
+
+function itemEffectText(t, v) { return t === 'atk' ? `攻撃+${v}` : t === 'def' ? `防御+${v}` : t === 'hp' ? `体力+${v}` : ''; }
+function applyItemWithValue(t, v) { if (t === 'atk') player.atk += v; else if (t === 'def') player.def += v; else if (t === 'hp') player.hp += v; }
+
+function startSpinning() {
+  spinning = true;
+  reelStopped = [false, false, false];
+  reelStoppedItem = [null, null, null];
+  resultText.textContent = ''; resultText.className = '';
+  for (let i = 0; i < 3; i++) buildReelStrip(i);
+  updateUI();
+}
+
+function spin() {
+  if (spinning || spinsLeft <= 0) return;
+  startSpinning();
+}
+
+for (let i = 0; i < 3; i++) $('reel' + i).addEventListener('click', () => stopReel(i));
+
+// ===== Battle (real-time, interruptible) =====
+const FUKUTSU_ITEMS = [
+  { label: '攻撃+5', value: 5, color: '#88ff88' },
+  { label: '攻撃+10', value: 10, color: '#66dd66' },
+  { label: '攻撃+15', value: 15, color: '#44cc44' },
+  { label: '攻撃+30', value: 30, color: '#ffd700' },
+  { label: '攻撃+50', value: 50, color: '#ff8800' },
+  { label: '攻撃+100', value: 100, color: '#ff4444' },
+  { label: '死亡', value: -1, color: '#880000' },
+  { label: '死亡', value: -1, color: '#660000' },
+];
+let fukutsuUsedThisStage = false;
+const fukutsuOverlay = $('fukutsu-overlay');
+const fukutsuStrip = $('fukutsu-strip');
+
+function showFukutsuSlot(bp, enemy, ed, resolve) {
+  fukutsuOverlay.classList.add('visible');
+  const fkH = 70;
+  let html = '';
+  for (let c = 0; c < 5; c++) for (const fi of FUKUTSU_ITEMS) {
+    html += `<div class="fukutsu-item" style="color:${fi.color}">${fi.label}</div>`;
+  }
+  fukutsuStrip.innerHTML = html;
+  const totalH = FUKUTSU_ITEMS.length * fkH;
+  fukutsuStrip.style.setProperty('--fk-h', `${totalH}px`);
+  fukutsuStrip.style.animation = 'none';
+  fukutsuStrip.offsetHeight;
+  fukutsuStrip.style.animation = `fukutsuSpin 0.75s linear infinite`;
+
+  function stopFukutsu() {
+    fukutsuOverlay.removeEventListener('click', stopFukutsu);
+    const m = new DOMMatrix(getComputedStyle(fukutsuStrip).transform);
+    const cy = m.m42;
+    fukutsuStrip.style.animation = 'none';
+    fukutsuStrip.style.transform = `translateY(${cy}px)`;
+    fukutsuStrip.offsetHeight;
+    const fkCenter = 100;
+    const rawIdx = (fkCenter - fkH / 2 - cy) / fkH;
+    const absIdx = Math.round(rawIdx);
+    const patIdx = ((absIdx % FUKUTSU_ITEMS.length) + FUKUTSU_ITEMS.length) % FUKUTSU_ITEMS.length;
+    const result = FUKUTSU_ITEMS[patIdx];
+    const snapY = fkCenter - fkH / 2 - absIdx * fkH;
+    fukutsuStrip.style.transition = 'transform 0.3s ease-out';
+    fukutsuStrip.style.transform = `translateY(${snapY}px)`;
+
+    setTimeout(() => {
+      fukutsuOverlay.classList.remove('visible');
+      fukutsuStrip.style.transition = '';
+      resolve(result);
+    }, 800);
+  }
+  fukutsuOverlay.addEventListener('click', stopFukutsu);
+}
+
+function doBattle() {
+  const ed = ENEMIES[Math.min(stage, ENEMIES.length - 1)];
+  const enemy = { ...ed };
+  const bp = { hp: player.hp, atk: player.atk, def: player.def };
+  fukutsuUsedThisStage = false;
+  let turnCount = 0;
+
+  // Intimidate: ATK -10% at start (表示はinitBattle内で)
+  let intimidateLoss = 0;
+  if (ed.traitId === 'intimidate') {
+    intimidateLoss = bp.atk - Math.floor(bp.atk * 0.9);
+    bp.atk = Math.floor(bp.atk * 0.9);
+  }
+
+  $('game-bg').style.opacity = '0.9';
+  $('slot-area').style.display = 'none';
+
+  // Show trait intro then start battle
+  if (ed.trait) {
+    const td = $('trait-display');
+    $('trait-name').textContent = ed.trait;
+    $('trait-desc').textContent = ed.traitDesc;
+    $('trait-name').style.opacity = '0'; $('trait-name').style.transform = 'translateX(-20px)';
+    $('trait-desc').style.opacity = '0'; $('trait-desc').style.transform = 'translateX(-20px)';
+    td.classList.add('visible');
+    setTimeout(() => { $('trait-name').style.opacity = '1'; $('trait-name').style.transform = 'translateX(0)'; }, 100);
+    setTimeout(() => { $('trait-desc').style.opacity = '1'; $('trait-desc').style.transform = 'translateX(0)'; }, 600);
+    setTimeout(() => { td.classList.remove('visible'); initBattle(); }, 2600);
+  } else {
+    initBattle();
+  }
+
+  function initBattle() {
+  battleOverlay.classList.add('visible');
+  document.querySelectorAll('.battle-side').forEach(el => el.classList.add('battle-bg-box'));
+  const lossHp = $('loss-hp'), lossAtk = $('loss-atk'), lossDef = $('loss-def');
+  lossHp.innerHTML = ''; lossAtk.innerHTML = ''; lossDef.innerHTML = '';
+  lossHp.style.display = 'block'; lossAtk.style.display = 'block'; lossDef.style.display = 'block';
+  if (intimidateLoss > 0) lossAtk.innerHTML += `<div style="color:#ff8800">-${intimidateLoss}威圧</div>`;
+  // Show trait box during battle
+  const traitBox = $('enemy-trait-box');
+  if (ed.trait) { traitBox.textContent = `${ed.trait}：${ed.traitDesc}`; traitBox.style.display = 'block'; }
+
+  let playerBlockCount = 0;
+  let playerAbsorbedTotal = 0;
+  let playerAbsorbedList = [];
+  let enemyAbsorbedTotal = 0;
+  battleLog.innerHTML = ''; battleAction.textContent = ''; battleAction.classList.remove('result-text'); battleDamage.innerHTML = '';
+  $('b-enemy-name').textContent = enemy.name;
+  $('b-enemy-hp').textContent = `体力 ${enemy.hp}`; $('b-enemy-hp').style.color = '';
+  $('b-enemy-sub').textContent = `攻${enemy.atk}　防${enemy.def}`;
+  $('b-player-hp').textContent = `体力 ${bp.hp}`; $('b-player-hp').style.color = '';
+  $('b-player-sub').textContent = `攻${bp.atk}　防${bp.def}`;
+
+  function sync() {
+    pHp.textContent = bp.hp; pAtk.textContent = bp.atk; pDef.textContent = bp.def;
+    $('b-player-hp').textContent = `体力 ${bp.hp}`;
+    $('b-player-sub').textContent = `攻${bp.atk}　防${bp.def}`;
+    $('b-enemy-hp').textContent = `体力 ${enemy.hp}`;
+    $('b-enemy-sub').textContent = `攻${enemy.atk}　防${enemy.def}`;
+  }
+
+  function addLogRow(left, center, right) {
+    battleLog.innerHTML += `<div class="turn-row"><div class="turn-left">${left}</div><div class="turn-center">${center}</div><div class="turn-right">${right}</div></div>`;
+    battleLog.scrollTop = battleLog.scrollHeight;
+  }
+
+  function showBattleResult() {
+    const won = enemy.hp <= 0;
+    // 戦闘後に累計吸収分をATKから引く
+    const atkLoss = playerAbsorbedTotal;
+    bp.atk = Math.max(0, bp.atk - atkLoss);
+    for (const loss of playerAbsorbedList) lossAtk.innerHTML += `<div>-${loss}</div>`;
+    player.hp = bp.hp; player.atk = bp.atk; player.def = bp.def;
+    setTimeout(() => {
+      battleDamage.innerHTML = '';
+      battleAction.classList.add('result-text');
+      battleAction.style.color = won ? '#ffd700' : '#ff4444';
+      battleAction.textContent = won ? '無事倒した' : '敗北した';
+      const atkLossMsg = atkLoss > 0 ? `<br><span style="color:#ff8888;font-size:22px">攻撃 -${atkLoss}（戦闘の代償）</span>` : '';
+      const quote = won ? ed.lose : (ed.win || ed.taunt);
+      battleDamage.innerHTML = `<div style="color:rgba(255,200,100,0.6);font-size:26px;font-style:italic;margin-top:12px">「${quote}」${atkLossMsg}</div>`;
+      battleLog.classList.add('battle-end');
+      resultPhase = 'battle-done';
+      battleWon = won;
+      updateUI();
+    }, 800);
+  }
+
+  function doEnemyTurn() {
+    if (bp.hp <= 0 || enemy.hp <= 0) { showBattleResult(); return; }
+    turnCount++;
+
+    // Trait: regen
+    if (ed.traitId === 'regen5') { enemy.hp += 5; }
+    if (ed.traitId === 'earthRegen') { enemy.hp += 10; }
+    if (ed.traitId === 'absolute' && enemy.hp <= ed.hp / 2) { enemy.hp += 8; }
+
+    // Trait: absolute ATK boost when HP <= 50%
+    if (ed.traitId === 'absolute' && enemy.hp <= ed.hp / 2) {
+      enemy.atk = Math.ceil(ed.atk * 1.5);
+    }
+
+    // Trait: thunderSpeed - 2 attacks
+    const enemyAttacks = ed.traitId === 'thunderSpeed' ? 2 : (ed.traitId === 'doubleAtk' && turnCount % 3 === 0 ? 2 : 1);
+
+    battleAction.style.color = '#ff9999';
+    battleAction.textContent = `${enemy.name}の攻撃！${enemyAttacks > 1 ? '（' + enemyAttacks + '連撃）' : ''}`;
+    battleDamage.innerHTML = '';
+
+    let atkIdx = 0;
+    function doOneEnemyAtk() {
+    setTimeout(() => {
+      const eDmg = Math.max(0, enemy.atk - bp.def);
+      const absorbed = Math.min(bp.def, enemy.atk);
+      enemyAbsorbedTotal += absorbed; // 敵のATKへの累計ツケ
+      bp.def = Math.max(0, bp.def - Math.ceil(absorbed / 2));
+      if (eDmg > 0) bp.hp = Math.max(0, bp.hp - eDmg);
+
+      // 右上の各ステータス下にマイナス表示
+      const defLoss = Math.ceil(absorbed / 2);
+      if (eDmg > 0) lossHp.innerHTML += `<div>-${eDmg}</div>`;
+      if (defLoss > 0) lossDef.innerHTML += `<div>-${defLoss}</div>`;
+
+      if (eDmg > 0) {
+        const eLabel = absorbed > 0 ? '攻撃が通った' : '完全攻撃した';
+        battleDamage.innerHTML = `<span class="dmg-pop" style="color:#ff6666">−${eDmg}</span>`;
+        $('b-player-hp').style.color = '#ff2222'; setTimeout(() => $('b-player-hp').style.color = '', 300);
+      } else {
+        battleDamage.innerHTML = `<span class="dmg-pop" style="color:#999999">完全防御した</span>`;
+        playerBlockCount++;
+      }
+
+      const eLogLabel = eDmg > 0 ? (absorbed > 0 ? '攻撃が通った' : '完全攻撃した') : '完全防御した';
+      const left = `<span class="turn-atk">攻撃 ${enemy.atk}</span>`;
+      const right = eDmg > 0
+        ? `<span class="turn-dmg">${eDmg}ダメージ</span><br><span class="turn-def">${eLogLabel}</span><br><span class="turn-cost">防御 -${absorbed}</span>`
+        : `<span class="turn-block">${eLogLabel}</span><br><span class="turn-def">防御 ${bp.def+absorbed}</span>`;
+      addLogRow(left, '→', right);
+      // Trait: scorch - extra DEF loss
+      if (ed.traitId === 'scorch') { bp.def = Math.max(0, bp.def - 5); lossDef.innerHTML += `<div style="color:#ff8800">-5灼熱</div>`; }
+      sync();
+
+      if (bp.hp <= 0) { showBattleResult(); return; }
+      atkIdx++;
+      if (atkIdx < enemyAttacks) { doOneEnemyAtk(); }
+      else { setTimeout(doPlayerTurn, 500); }
+    }, 500);
+    }
+    doOneEnemyAtk();
+  }
+
+  function doPlayerTurn() {
+    if (bp.hp <= 0 || enemy.hp <= 0) { showBattleResult(); return; }
+
+    // Trait: petrify (every 3 turns) / freeze (every 4 turns)
+    if ((ed.traitId === 'petrify' && turnCount % 3 === 0) || (ed.traitId === 'freeze' && turnCount % 4 === 0)) {
+      battleAction.style.color = '#aaaaaa';
+      battleAction.textContent = ed.traitId === 'petrify' ? '石化！動けない！' : '凍結！動けない！';
+      battleDamage.innerHTML = '';
+      setTimeout(doEnemyTurn, 800);
+      return;
+    }
+
+    // 不屈の闘志チェック: 6回連続で完全防御されたら発動（何回でも）
+    if (playerBlockCount >= 6) {
+      playerBlockCount = 0;
+      battleAction.style.color = '#ffd700';
+      battleAction.textContent = '攻撃が通らない…！';
+      battleDamage.innerHTML = '';
+      setTimeout(() => {
+        showFukutsuSlot(bp, enemy, ed, (result) => {
+          if (result.value === -1) {
+            bp.hp = 0;
+            sync();
+            battleAction.style.color = '#ff4444';
+            battleAction.textContent = '力尽きた…';
+            battleDamage.innerHTML = '';
+            showBattleResult();
+          } else {
+            bp.atk += result.value;
+            sync();
+            battleAction.style.color = '#ffd700';
+            battleAction.textContent = `不屈の闘志！ 攻撃+${result.value}！`;
+            battleDamage.innerHTML = '';
+            setTimeout(doPlayerAttack, 800);
+          }
+        });
+      }, 600);
+      return;
+    }
+
+    doPlayerAttack();
+  }
+
+  function doPlayerAttack() {
+    battleAction.style.color = '#99ccff';
+    battleAction.textContent = 'あなたの攻撃！';
+    battleDamage.innerHTML = '';
+
+    setTimeout(() => {
+      // Trait: dragonScale - first 5 turns, damage halved
+      let pDmg = Math.max(0, bp.atk - enemy.def);
+      if (ed.traitId === 'dragonScale' && turnCount <= 5) pDmg = Math.floor(pDmg / 2);
+      const pAbsorbed = Math.min(enemy.def, bp.atk);
+      playerAbsorbedTotal += pAbsorbed;
+      if (pAbsorbed > 0) playerAbsorbedList.push(pAbsorbed);
+      const enemyDefLoss = Math.ceil(pAbsorbed / 2);
+      enemy.def = Math.max(0, enemy.def - enemyDefLoss);
+      if (pDmg > 0) enemy.hp = Math.max(0, enemy.hp - pDmg);
+
+      if (pDmg > 0) {
+        const pLabel = enemy.def > 0 ? '攻撃が通った' : '完全攻撃した';
+        battleDamage.innerHTML = `<span class="dmg-pop" style="color:#66bbff">${pDmg} ダメージをあたえた</span>`;
+        $('b-enemy-hp').style.color = '#ff2222'; setTimeout(() => $('b-enemy-hp').style.color = '', 300);
+        playerBlockCount = 0;
+      } else {
+        battleDamage.innerHTML = `<span class="dmg-pop" style="color:#999999">完全防御された</span>`;
+        playerBlockCount++;
+      }
+
+      const pLogLabel = pDmg > 0 ? (enemy.def > 0 ? '攻撃が通った' : '完全攻撃した') : '完全防御された';
+      const right = `<span class="turn-atk">攻撃 ${bp.atk}</span>`;
+      const left = pDmg > 0
+        ? `<span class="turn-dmg">${pDmg}ダメージ</span><br><span class="turn-def">${pLogLabel}</span>`
+        : `<span class="turn-block">${pLogLabel}</span><br><span class="turn-def">防御 ${enemy.def}</span>`;
+      addLogRow(left, '←', right);
+      sync();
+
+      if (enemy.hp <= 0) { showBattleResult(); return; }
+      setTimeout(doEnemyTurn, 500);
+    }, 500);
+  }
+
+  // Trait: thunderSpeed - enemy goes first with 2 attacks already handled in doEnemyTurn
+  setTimeout(doEnemyTurn, 600);
+  } // end initBattle
+} // end doBattle
+
+// Hide battle trait on cleanup
+const origCleanup = cleanupBattle;
+cleanupBattle = function(showSlot) {
+  origCleanup(showSlot);
+  $('battle-trait').style.display = 'none';
+  $('enemy-trait-box').style.display = 'none';
+};
+
+// Event slot items
+const EVENT_ITEMS = [
+  { label: '一週間歩いた', value: -10, color: '#ff8888' },
+  { label: '山を登った', value: -20, color: '#ff6666' },
+  { label: '宿屋で休息した', value: 20, color: '#88ff88' },
+  { label: '野宿した', value: 10, color: '#aaddaa' },
+  { label: '夜盗におそわれた', value: -15, color: '#ff7777' },
+  { label: '一か月歩いた', value: -30, color: '#ff4444' },
+];
+const eventOverlay = $('event-overlay');
+const eventStrip = $('event-strip');
+
+function showEventSlot(callback) {
+  // Show travel background (no dark filter)
+  $('game-bg').style.backgroundImage = 'url(img/travel.webp)';
+  $('game-bg').style.opacity = '1';
+  $('slot-area').style.display = 'none';
+  eventOverlay.classList.add('visible');
+  const evH = 60;
+  // 5章後と10章後にマイナスが倍になる
+  const eventMult = stage >= 10 ? 4 : stage >= 5 ? 2 : 1;
+  let html = '';
+  for (let c = 0; c < 5; c++) for (const ei of EVENT_ITEMS) {
+    const val = ei.value < 0 ? ei.value * eventMult : ei.value;
+    html += `<div class="event-item" style="color:${ei.color}">${ei.label}　${val > 0 ? '+' : ''}${val}</div>`;
+  }
+  eventStrip.innerHTML = html;
+  const totalH = EVENT_ITEMS.length * evH;
+  eventStrip.style.setProperty('--ev-h', `${totalH}px`);
+  eventStrip.style.animation = 'none';
+  eventStrip.offsetHeight;
+  eventStrip.style.animation = `eventSpin 0.5s linear infinite`;
+
+  // ランダムなタイミングで自動停止（1.5〜3秒）
+  const stopDelay = 200 + 1000 + Math.random() * 700;
+  setTimeout(stopEvent, stopDelay);
+
+  function stopEvent() {
+    const m = new DOMMatrix(getComputedStyle(eventStrip).transform);
+    const cy = m.m42;
+    eventStrip.style.animation = 'none';
+    eventStrip.style.transform = `translateY(${cy}px)`;
+    eventStrip.offsetHeight;
+    const evCenter = 90;
+    const rawIdx = (evCenter - evH / 2 - cy) / evH;
+    const absIdx = Math.round(rawIdx);
+    const patIdx = ((absIdx % EVENT_ITEMS.length) + EVENT_ITEMS.length) % EVENT_ITEMS.length;
+    const result = EVENT_ITEMS[patIdx];
+    const snapY = evCenter - evH / 2 - absIdx * evH;
+    eventStrip.style.transition = 'transform 0.3s ease-out';
+    eventStrip.style.transform = `translateY(${snapY}px)`;
+
+    setTimeout(() => {
+      const actualValue = result.value < 0 ? result.value * eventMult : result.value;
+      player.hp = player.hp + actualValue;
+      updateUI();
+      $('event-title').textContent = `${result.label}（体力 ${actualValue > 0 ? '+' : ''}${actualValue}）`;
+      setTimeout(() => {
+        eventOverlay.classList.remove('visible');
+        eventStrip.style.transition = '';
+        $('slot-area').style.display = '';
+        if (player.hp <= 0) {
+          player.hp = 0;
+          $('game-bg').style.opacity = '0.65';
+          showGameover(false);
+        } else {
+          callback();
+        }
+      }, 1200);
+    }, 600);
+  }
+}
+
+function cleanupBattle(showSlot) {
+  battleLog.classList.remove('battle-end');
+  battleOverlay.classList.remove('visible');
+  $('game-bg').style.opacity = '0.65';
+  if (showSlot) $('slot-area').style.display = '';
+  document.querySelectorAll('.battle-side').forEach(el => el.classList.remove('battle-bg-box'));
+  $('loss-hp').style.display = 'none'; $('loss-atk').style.display = 'none'; $('loss-def').style.display = 'none';
+}
+
+function handleBattleDoneClick() {
+  if (resultPhase !== 'battle-done') return;
+  resultPhase = '';
+  cleanupBattle(battleWon);
+
+  if (battleWon) {
+    stage++; stageGains = [];
+    if (stage >= ENEMIES.length) {
+      $('stage-display').style.display = 'none';
+      $('enemy-info').style.display = 'none';
+      $('player-info').style.display = 'none';
+      $('slot-area').style.display = 'none';
+      $('max-stage').style.display = 'none';
+      resultPhase = 'ending-auto';
+      // 全自動エンディングシーケンス
+      setTimeout(() => {
+        showEndingScene('img/victory.webp', ['全ての敵を倒した', '激しい戦いだったが……', 'これで全て終わった'], null, () => {
+          setTimeout(() => {
+            showEndingScene('img/ending.webp', ['愛すべき人のいる故郷に戻ってきた', 'ようやくだ……', 'ここに戻ってこれるのに８年かかった'], null, () => {
+              setTimeout(() => {
+                showEndingScene('img/family.webp', ['その後僕たちはこの村で……', '幸せな時間を過ごした', '悪くない人生だった'], '36px', () => {
+                  overlay.style.background = '';
+                  resultPhase = 'ending-clear';
+                  showGameover(true);
+                });
+              }, 300);
+            });
+          }, 300);
+        });
+      }, 500);
+      return;
+    }
+    // Show event slot before next stage
+    resultText.textContent = ''; resultText.className = '';
+    showEventSlot(() => {
+      $('game-bg').style.opacity = '0.65';
+      spinsLeft = SPINS_PER_STAGE;
+      initReels(); startSpinning(); updateUI();
+    });
+  } else {
+    setTimeout(() => showGameover(false), 300);
+  }
+}
+
+battleOverlay.addEventListener('click', handleBattleDoneClick);
+
+// エンディング自動シーン表示（0.5s fade in + 2.3s display + 0.4s fade out）
+function showEndingScene(bgImage, lines, fontSize, callback) {
+  $('game-bg').style.backgroundImage = `url(${bgImage})`;
+  $('game-bg').style.opacity = '1';
+  if (typeof lines === 'string') lines = [lines];
+  overlayText.innerHTML = '';
+  overlayText.className = 'win';
+  if (fontSize) overlayText.style.fontSize = fontSize;
+  overlayHint.textContent = '';
+  overlay.style.background = 'transparent';
+  overlay.style.transition = 'opacity 0.5s';
+  overlay.style.opacity = '0';
+  overlay.classList.add('visible');
+  overlay.offsetHeight;
+  overlay.style.opacity = '1';
+
+  // Pre-create all lines hidden, then reveal one by one
+  for (const line of lines) {
+    const div = document.createElement('div');
+    div.textContent = line;
+    div.style.opacity = '0';
+    div.style.transform = 'translateX(-20px)';
+    div.style.transition = 'opacity 1.25s, transform 1.25s';
+    div.style.lineHeight = '2.5';
+    overlayText.appendChild(div);
+  }
+
+  let lineIdx = 0;
+  const lineDelay = 1400;
+  function showNextLine() {
+    if (lineIdx >= lines.length) {
+      setTimeout(() => {
+        overlay.style.transition = 'opacity 0.2s';
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+          overlay.classList.remove('visible');
+          overlay.style.opacity = '';
+          overlay.style.transition = '';
+          overlayText.style.fontSize = '';
+          overlayText.innerHTML = '';
+          callback();
+        }, 200);
+      }, 1000);
+      return;
+    }
+    const div = overlayText.children[lineIdx];
+    div.style.opacity = '1';
+    div.style.transform = 'translateX(0)';
+    lineIdx++;
+    setTimeout(showNextLine, lineDelay);
+  }
+  setTimeout(showNextLine, 500);
+}
+
+
+function showGameover(cleared) {
+  const h2 = gameoverScreen.querySelector('h2');
+  if (cleared) {
+    h2.textContent = 'クリア'; h2.style.color = '#ffd700'; h2.classList.add('clear-glow');
+    gameoverStats.textContent = `到達: 第${stage}章　体力${player.hp} 攻撃${player.atk} 防御${player.def}`;
+    $('game-bg').style.backgroundImage = 'url(img/ending.webp)';
+    $('game-bg').style.opacity = '0.7';
+  } else {
+    h2.textContent = 'おわり'; h2.style.color = '#ffffff'; h2.classList.remove('clear-glow');
+    gameoverStats.textContent = `第${stage+1}章で敗北　体力${player.hp} 攻撃${player.atk} 防御${player.def}`;
+    $('game-bg').style.backgroundImage = 'url(img/gameover.webp)';
+    $('game-bg').style.opacity = '1';
+    gameoverScreen.style.background = 'transparent';
+  }
+  $('stage-display').style.display = 'none';
+  $('enemy-info').style.display = 'none';
+  $('player-info').style.display = 'none';
+  $('slot-area').style.display = 'none';
+  $('max-stage').style.display = 'none';
+  gameoverScreen.style.display = 'flex';
+}
+
+function initReels() {
+  for (let i = 0; i < 3; i++) {
+    const el = $('reel' + i);
+    const strip = el.querySelector('.reel-strip');
+    strip.style.animation = 'none'; strip.style.transition = 'none';
+    const offset = i * Math.floor(REEL_PATTERN.length / 3);
+    let html = '';
+    for (let j = 0; j < REEL_PATTERN.length; j++) html += makeReelItem(REEL_PATTERN[(j + offset) % REEL_PATTERN.length]);
+    strip.innerHTML = html;
+    // Center item index 1 in the select line
+    strip.style.transform = `translateY(${REEL_CENTER - ITEM_H / 2 - ITEM_H}px)`;
+    el.classList.remove('stopped');
+  }
+}
+
+let isFirstGame = true;
+
+function startGame() {
+  const wasFirst = isFirstGame;
+  isFirstGame = false;
+
+  function doStart() {
+    player = { hp: 10, atk: 10, def: 10 };
+    stage = 0; spinsLeft = SPINS_PER_STAGE; spinning = false; battleReady = false;
+    resultText.textContent = ''; resultText.className = ''; stageGains = [];
+    titleScreen.style.display = 'none'; gameoverScreen.style.display = 'none'; gameoverScreen.style.background = '';
+    battleOverlay.classList.remove('visible'); stopBgm();
+    overlay.classList.remove('visible'); overlay.style.background = ''; overlayLog.style.display = 'none'; resultPhase = '';
+    spinBtn.disabled = false;
+    spinBtn.style.borderColor = '';
+    spinBtn.style.color = '';
+    spinBtn.style.background = '';
+    spinBtn.style.display = '';
+    $('stop-btn').style.display = 'none';
+    $('game-bg').style.opacity = '0.65';
+    $('game-bg').style.backgroundImage = '';
+    $('slot-area').style.display = '';
+    $('stage-display').style.display = '';
+    $('enemy-info').style.display = '';
+    $('player-info').style.display = '';
+    $('max-stage').style.display = '';
+    initReels(); startSpinning(); updateUI();
+  }
+
+  if (wasFirst) {
+    doStart();
+  } else {
+    // 先にゲームオーバー画面と背景を消す
+    gameoverScreen.style.display = 'none';
+    gameoverScreen.style.background = '';
+    titleScreen.style.display = 'none';
+    $('game-bg').style.backgroundImage = '';
+    $('game-bg').style.opacity = '0';
+    // 「そして次の旅が始まるのです」表示
+    const nj = $('next-journey');
+    nj.style.display = 'flex';
+    nj.offsetHeight;
+    nj.style.opacity = '1';
+    setTimeout(() => {
+      nj.style.opacity = '0';
+      setTimeout(() => {
+        nj.style.display = 'none';
+        doStart();
+      }, 300);
+    }, 1300);
+  }
+}
+
+function stopNextReel() {
+  if (!spinning) return;
+  for (let i = 0; i < 3; i++) { if (!reelStopped[i]) { stopReel(i); return; } }
+}
+
+spinBtn.addEventListener('click', () => {
+  if (battleReady) { battleReady = false; doBattle(); }
+  else if (!spinning && spinsLeft > 0) { startSpinning(); }
+});
+$('stop-btn').addEventListener('click', stopNextReel);
+
+titleScreen.addEventListener('click', (e) => {
+  if (e.target.classList.contains('dev-btn')) return;
+  startGame();
+});
+document.querySelectorAll('.dev-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const s = parseInt(btn.dataset.stats);
+    player = { hp: s, atk: s, def: s };
+    stage = parseInt(btn.dataset.stage);
+    spinsLeft = SPINS_PER_STAGE;
+    spinning = false; battleReady = false;
+    resultText.textContent = ''; resultText.className = ''; stageGains = [];
+    titleScreen.style.display = 'none'; gameoverScreen.style.display = 'none'; gameoverScreen.style.background = '';
+    battleOverlay.classList.remove('visible');
+    overlay.classList.remove('visible'); resultPhase = '';
+    initReels(); startSpinning(); updateUI();
+  });
+});
+gameoverScreen.addEventListener('click', () => {
+  if (resultPhase === 'ending-clear') {
+    resultPhase = '';
+    gameoverScreen.style.display = 'none';
+    gameoverScreen.style.background = '';
+    $('game-bg').style.backgroundImage = '';
+    $('game-bg').style.opacity = '0.65';
+    $('stage-display').style.display = '';
+    $('enemy-info').style.display = '';
+    $('player-info').style.display = '';
+    $('slot-area').style.display = '';
+    $('max-stage').style.display = '';
+    isFirstGame = true;
+    titleScreen.style.display = 'flex';
+  } else {
+    startGame();
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (titleScreen.style.display !== 'none') { startGame(); return; }
+    if (gameoverScreen.style.display === 'flex') { startGame(); return; }
+    if (resultPhase === 'battle-done') { handleBattleDoneClick(); return; }
+    if (spinning) { stopNextReel(); return; }
+    else if (battleReady) { battleReady = false; doBattle(); }
+    else if (spinsLeft > 0) { startSpinning(); }
+  }
+});
+
+initReels();
+</script>
+</body>
+</html>

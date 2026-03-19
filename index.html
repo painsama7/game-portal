@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GAME PORTAL</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:#0a0a0f;
+    color:#fff;
+    font-family:'Segoe UI','Helvetica Neue',sans-serif;
+    min-height:100vh;
+    display:flex; flex-direction:column; align-items:center;
+    padding:40px 20px;
+  }
+  h1 {
+    font-size:36px; letter-spacing:8px; margin-bottom:40px;
+    color:#ff6600; text-shadow:0 0 20px rgba(255,100,0,0.4);
+  }
+  .grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));
+    gap:24px; max-width:900px; width:100%;
+  }
+  .card {
+    background:#14141e;
+    border:1px solid #333;
+    border-radius:10px;
+    overflow:hidden;
+    cursor:pointer;
+    transition:transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  }
+  .card:hover {
+    transform:translateY(-4px);
+    box-shadow:0 8px 30px rgba(255,100,0,0.2);
+    border-color:#ff6600;
+  }
+  .card-img {
+    width:100%; height:160px;
+    object-fit:cover;
+    border-bottom:1px solid #333;
+  }
+  .card-body { padding:16px; }
+  .card-title {
+    font-size:20px; font-weight:bold; margin-bottom:6px;
+    letter-spacing:2px;
+  }
+  .card-desc {
+    font-size:13px; color:#888; line-height:1.5;
+  }
+  .card-tag {
+    display:inline-block; margin-top:10px;
+    padding:2px 10px; border-radius:3px;
+    font-size:11px; letter-spacing:1px;
+  }
+  .tag-3d { background:#1a3a5c; color:#4da6ff; }
+  .tag-2d { background:#3a2a1a; color:#ffaa44; }
+</style>
+</head>
+<body>
+  <h1>GAME PORTAL</h1>
+  <div class="grid">
+
+    <div class="card" onclick="location.href='game3/'">
+      <div style="width:100%;height:160px;background:linear-gradient(135deg,#1a1a2e,#2a1a0a);display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:48px;color:#ff4400;text-shadow:0 0 20px #f40;">AIR COMBAT</span>
+      </div>
+      <div class="card-body">
+        <div class="card-title">AIR COMBAT</div>
+        <div class="card-desc">3D空戦シューティング。28ステージ、4タイプの敵機、必殺技変換システム。</div>
+        <span class="card-tag tag-3d">3D</span>
+      </div>
+    </div>
+
+    <div class="card" onclick="location.href='game7/'">
+      <div style="width:100%;height:160px;background:linear-gradient(135deg,#0a1a0a,#1a2a1a);display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:48px;color:#00cc44;text-shadow:0 0 20px #0c4;">FLAG CLIMB</span>
+      </div>
+      <div class="card-body">
+        <div class="card-title">FLAG CLIMB</div>
+        <div class="card-desc">キューブが隆起するステージを登れ。</div>
+        <span class="card-tag tag-3d">3D</span>
+      </div>
+    </div>
+
+    <div class="card" onclick="location.href='game8/'">
+      <div style="width:100%;height:160px;background:linear-gradient(135deg,#1a1a2e,#0a1a2a);display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:48px;color:#00b4d8;text-shadow:0 0 20px #0bd;">TANK BATTLE</span>
+      </div>
+      <div class="card-body">
+        <div class="card-title">TANK BATTLE 3D</div>
+        <div class="card-desc">3D戦車バトル。表24ステージ+裏24ステージ、ボス戦、チャージ弾。</div>
+        <span class="card-tag tag-3d">3D</span>
+      </div>
+    </div>
+
+    <div class="card" onclick="location.href='game9slot/'">
+      <div style="width:100%;height:160px;background:linear-gradient(135deg,#2a1a2a,#1a0a1a);display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:48px;color:#ffcc00;text-shadow:0 0 20px #fc0;">SLOT RPG</span>
+      </div>
+      <div class="card-body">
+        <div class="card-title">SLOT RPG</div>
+        <div class="card-desc">スロットで戦う異色RPG。</div>
+        <span class="card-tag tag-2d">2D</span>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

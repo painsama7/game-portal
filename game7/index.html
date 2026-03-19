@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game7 - Flag Climb</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      overflow: hidden;
+      background: #e7edf6;
+      font-family: 'Yu Mincho', 'Hiragino Mincho ProN', 'MS PMincho', serif;
+      color: #243447;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    canvas { display: block; }
+    #hud {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      pointer-events: none;
+      min-width: 280px;
+    }
+    .hud-label {
+      font-size: 14px;
+      letter-spacing: 2px;
+      font-weight: 800;
+      color: #5c6c80;
+    }
+    #timer {
+      font-size: 72px;
+      line-height: 0.9;
+      font-weight: 900;
+      color: #1d2b3a;
+    }
+    #height {
+      font-size: 100px;
+      line-height: 0.9;
+      font-weight: 900;
+      color: #ff8c42;
+      text-shadow: 0 4px 18px rgba(255, 140, 66, 0.18);
+      margin-top: 6px;
+      transition: font-size 0.3s, color 0.3s;
+    }
+    #message {
+      position: absolute;
+      top: 44%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 52px;
+      font-weight: 900;
+      letter-spacing: 5px;
+      color: #243447;
+      text-align: center;
+      pointer-events: none;
+      transition: opacity 1.3s;
+    }
+    #controls {
+      position: absolute;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: #516173;
+      pointer-events: none;
+      text-align: center;
+      width: min(92vw, 860px);
+    }
+    #clone-hud {
+      position: absolute;
+      top: 28px;
+      right: 24px;
+      min-width: 200px;
+      padding: 18px 22px;
+      border: 1px solid rgba(81, 97, 115, 0.18);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(8px);
+      text-align: right;
+      pointer-events: none;
+    }
+    .clone-label {
+      font-size: 16px;
+      letter-spacing: 2px;
+      font-weight: 800;
+      color: #5c6c80;
+    }
+    #clone-status {
+      font-size: 48px;
+      line-height: 1;
+      font-weight: 900;
+      color: #2f4c78;
+      margin-top: 6px;
+    }
+    #gauge-hud {
+      position: absolute;
+      bottom: 60px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .gauge-label {
+      font-size: 14px;
+      letter-spacing: 3px;
+      font-weight: 800;
+      color: #5c6c80;
+      text-align: center;
+    }
+    #gauge-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      background: #111111;
+      border-radius: 6px;
+      overflow: hidden;
+      padding: 4px;
+    }
+    .gauge-seg {
+      width: 92px;
+      height: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    .gauge-seg-fill {
+      position: absolute;
+      inset: 2px;
+      border-radius: 2px;
+      background: #1a1a1a;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+    .gauge-seg.filled .gauge-seg-fill {
+      box-shadow: 0 0 7px currentColor;
+    }
+    #continue-overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.65);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      gap: 24px;
+    }
+    #continue-overlay.visible {
+      display: flex;
+    }
+    #continue-text {
+      font-size: 56px;
+      font-weight: 900;
+      color: #fff;
+      text-align: center;
+      letter-spacing: 4px;
+      text-shadow: 0 4px 24px rgba(0,0,0,0.4);
+      transition: font-size 0.3s, color 0.3s, text-shadow 0.3s;
+    }
+    #continue-overlay.celebrate #continue-text {
+      animation: celebratePulse 2s ease-in-out 1;
+    }
+    @keyframes celebratePulse {
+      0% { opacity: 0; transform: scale(0.8); }
+      20% { opacity: 1; transform: scale(1.05); }
+      40% { transform: scale(1); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    #continue-sub {
+      font-size: 32px;
+      font-weight: 800;
+      color: #e2e8f0;
+      letter-spacing: 2px;
+    }
+    #continue-buttons {
+      display: flex;
+      gap: 28px;
+    }
+    #continue-buttons button {
+      font-family: inherit;
+      font-size: 28px;
+      font-weight: 900;
+      padding: 14px 48px;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      letter-spacing: 2px;
+      transition: transform 0.1s;
+    }
+    #continue-buttons button:active {
+      transform: scale(0.95);
+    }
+    #btn-yes {
+      background: #3b82f6;
+      color: #fff;
+    }
+    #btn-no {
+      background: #64748b;
+      color: #fff;
+    }
+    #clear-buttons {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+    #btn-clear-continue {
+      font-family: inherit;
+      font-size: 32px;
+      font-weight: 900;
+      padding: 18px 56px;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      letter-spacing: 3px;
+      background: #ffd700;
+      color: #1a1a1a;
+      box-shadow: 0 0 24px rgba(255,215,0,0.4);
+      transition: transform 0.1s;
+    }
+    #btn-clear-continue:active {
+      transform: scale(0.95);
+    }
+    #btn-clear-restart {
+      font-family: inherit;
+      font-size: 20px;
+      font-weight: 800;
+      padding: 10px 28px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      background: #64748b;
+      color: #fff;
+      transition: transform 0.1s;
+    }
+    #btn-clear-restart:active {
+      transform: scale(0.95);
+    }
+    #dev-panel {
+      display: none;
+      position: absolute;
+      top: 50%;
+      right: 14px;
+      transform: translateY(-50%);
+      flex-direction: column;
+      gap: 8px;
+      z-index: 50;
+    }
+    #dev-panel button {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: rgba(30,30,30,0.7);
+      color: #aaa;
+      letter-spacing: 1px;
+    }
+    #dev-panel button:hover {
+      background: rgba(60,60,60,0.9);
+      color: #fff;
+    }
+    body.title #hud { opacity: 0; }
+    body.title #clone-hud { opacity: 0; }
+    body.title #gauge-hud { opacity: 0; }
+    body.playing #hud,
+    body.game-over #hud,
+    body.playing #clone-hud,
+    body.game-over #clone-hud,
+    body.playing #gauge-hud,
+    body.game-over #gauge-hud {
+      opacity: 1;
+    }
+    body.playing #message { opacity: 0; }
+    body.game-over #message { opacity: 1; }
+    @media (max-width: 720px) {
+      #timer { font-size: 52px; }
+      #height { font-size: 80px; }
+      #message { font-size: 34px; width: 90vw; }
+      #controls { font-size: 14px; }
+      #clone-hud {
+        top: 18px; right: 14px;
+        min-width: 150px; padding: 12px 14px;
+      }
+      #clone-status { font-size: 36px; }
+      #continue-text { font-size: 38px; }
+      #continue-sub { font-size: 24px; }
+      #continue-buttons button { font-size: 22px; padding: 12px 36px; }
+    }
+  </style>
+  <script type="module" crossorigin src="/assets/index-oqo-Llgg.js"></script>
+</head>
+<body class="title">
+  <div id="hud">
+    <div class="hud-label">COUNTDOWN</div>
+    <div id="timer">10.0</div>
+    <div class="hud-label">HEIGHT</div>
+    <div id="height">0階</div>
+  </div>
+  <div id="clone-hud">
+    <div class="clone-label">DOUBLE JUMP</div>
+    <div id="clone-status">READY</div>
+  </div>
+  <div id="gauge-hud">
+    <div class="gauge-label">FLAG</div>
+    <div id="gauge-bar">
+      <div class="gauge-seg" data-index="8"><div class="gauge-seg-fill"></div></div>
+      <div class="gauge-seg" data-index="7"><div class="gauge-seg-fill"></div></div>
+      <div class="gauge-seg" data-index="6"><div class="gauge-seg-fill"></div></div>
+      <div class="gauge-seg" data-index="5"><div class="gauge-seg-fill"></div></div>
+      <div class="gauge-seg" data-index="4"><div class="gauge-seg-fill"></div></div>
+      <div class="gauge-seg" data-index="3"><div class="gauge-seg-fill"></div></div>
+      <div class="gauge-seg" data-index="2"><div class="gauge-seg-fill"></div></div>
+      <div class="gauge-seg" data-index="1"><div class="gauge-seg-fill"></div></div>
+      <div class="gauge-seg" data-index="0"><div class="gauge-seg-fill"></div></div>
+    </div>
+  </div>
+  <div id="continue-overlay">
+    <div id="continue-text"></div>
+    <div id="continue-sub">そこからつづけますか？</div>
+    <div id="continue-buttons">
+      <button id="btn-yes">はい</button>
+      <button id="btn-no">いいえ</button>
+    </div>
+    <div id="clear-buttons" style="display:none;">
+      <button id="btn-clear-continue">続きの世界をやる</button>
+      <button id="btn-clear-restart">最初からやる</button>
+    </div>
+  </div>
+  <div id="dev-panel">
+    <button id="dev-99">→ 99階</button>
+    <button id="dev-149">→ 149階</button>
+    <button id="dev-199">→ 199階</button>
+  </div>
+  <div id="message">LEFT CLICK TO START</div>
+  <div id="controls">移動: WASD / 矢印キー　　ジャンプ: スペース</div>
+</body>
+</html>

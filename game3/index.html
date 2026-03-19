@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8"/>
+  <title>game3 – 空中戦</title>
+  <style>
+    @font-face {
+      font-family: 'Letrogo';
+      src: url('/851letrogo_007.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'SoukouMincho';
+      src: url('/SoukouMincho.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'Gisshiri';
+      src: url('/Gisshiri.ttf') format('truetype');
+    }
+    * { margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-user-select:none; }
+    body { background:#000; overflow:hidden; font-family:'SoukouMincho','Courier New',monospace; }
+    canvas { display:block; }
+
+    #hud {
+      position:fixed; top:0; left:0; width:100%; height:100%;
+      pointer-events:none; color:#fff;
+    }
+
+    #stage-label {
+      position:absolute; top:14px; left:50%; transform:translateX(-50%);
+      font-size:18px; font-weight:bold; letter-spacing:4px;
+      color:#00ccff; text-shadow:0 0 10px #0af;
+    }
+    #hp-label { display:none; }
+
+    /* ── Segmented HP bar ─────────────────────────────────────── */
+    #hp-segs-panel {
+      position:absolute; top:18px; left:18px;
+      display:flex; gap:4px;
+    }
+    .hp-seg {
+      width:26px; height:11px;
+      border:2px solid rgba(255,180,60,0.8);
+      transform:skewX(-14deg);
+      transition:background 0.08s, box-shadow 0.08s;
+    }
+    /* filled colors: red → orange-red → orange → orange-yellow → yellow */
+    .hp-seg[data-seg="0"] { background:#ff2200; box-shadow:0 0 7px #ff2200; border-color:rgba(255,100,60,0.9); }
+    .hp-seg[data-seg="1"] { background:#ff4d00; box-shadow:0 0 7px #ff4d00; border-color:rgba(255,140,60,0.9); }
+    .hp-seg[data-seg="2"] { background:#ff7700; box-shadow:0 0 7px #ff7700; border-color:rgba(255,170,60,0.9); }
+    .hp-seg[data-seg="3"] { background:#ffaa00; box-shadow:0 0 7px #ffaa00; border-color:rgba(255,200,60,0.9); }
+    .hp-seg[data-seg="4"] { background:#ffdd00; box-shadow:0 0 7px #ffdd00; border-color:rgba(255,230,80,0.9); }
+    .hp-seg[data-seg="5"] { background:#88cc00; box-shadow:0 0 7px #88cc00; border-color:rgba(160,220,60,0.9); }
+    .hp-seg.empty {
+      background:rgba(30,10,0,0.7) !important;
+      box-shadow:none !important;
+      border-color:rgba(100,50,20,0.5) !important;
+    }
+    .hp-seg.dmg-flash {
+      background:#ffffff !important;
+      box-shadow:0 0 16px #fff !important;
+    }
+    .hp-seg.heal-pop {
+      animation: hp-heal-pop 0.22s ease-out forwards;
+    }
+    @keyframes hp-heal-pop {
+      0%   { transform:skewX(-14deg) scaleY(1.8); }
+      60%  { transform:skewX(-14deg) scaleY(0.85); }
+      100% { transform:skewX(-14deg) scaleY(1); }
+    }
+    #enemies-label {
+      position:absolute; top:14px; right:210px;
+      font-size:15px; color:#ffcc00; text-shadow:0 0 6px #fa0;
+    }
+    #buildings-label {
+      position:absolute; top:14px; right:18px;
+      font-size:15px; color:#00ff88; text-shadow:0 0 8px #0f6;
+      font-weight:bold; letter-spacing:1px;
+    }
+    #infantry-label {
+      position:absolute; top:40px; right:18px;
+      font-size:13px; color:#ffdd00; text-shadow:0 0 6px #fa0;
+      letter-spacing:1px; display:none;
+    }
+    #speed-label {
+      position:absolute; top:55px; left:18px;
+      font-family:'SoukouMincho','Courier New',monospace;
+    }
+    #speed-tag {
+      font-size:10px; color:rgba(180,220,255,0.55); letter-spacing:1px; margin-right:8px;
+    }
+    #speed-val {
+      font-size:26px; font-weight:bold; letter-spacing:2px;
+      color:#00e5ff; text-shadow:0 0 10px #0af;
+    }
+    #speed-reason {
+      font-size:11px; color:#ffaa44; letter-spacing:1px; margin-left:8px;
+    }
+
+    /* ── Crosshair – corner bracket reticle ────────────────────────────────── */
+    #crosshair {
+      position:absolute; top:50%; left:50%;
+      transform:translate(-50%,-50%);
+      width:131px; height:131px;
+      pointer-events:none;
+      /* サイズはJSで毎フレーム更新するためCSSトランジション不要 */
+    }
+    #crosshair::before, #crosshair::after { content:none; }
+    .cr-tl, .cr-tr, .cr-bl, .cr-br {
+      position:absolute; width:28px; height:28px;
+      border-color:rgba(255,255,255,0.80); border-style:solid;
+      transition: border-color 0.12s, border-width 0.1s;
+    }
+    .cr-tl { top:0; left:0;  border-width:2px 0 0 2px; }
+    .cr-tr { top:0; right:0; border-width:2px 2px 0 0; }
+    .cr-bl { bottom:0; left:0;  border-width:0 0 2px 2px; }
+    .cr-br { bottom:0; right:0; border-width:0 2px 2px 0; }
+    #crosshair.locking .cr-tl, #crosshair.locking .cr-tr,
+    #crosshair.locking .cr-bl, #crosshair.locking .cr-br {
+      border-color:rgba(255,160,0,0.95);
+      animation:pulse-lock 0.4s ease-in-out infinite alternate;
+    }
+    /* locked: 赤 + 二重線 (太さ2px のまま内側にもう一本) */
+    #crosshair.locked .cr-tl,
+    #crosshair.locked .cr-tr,
+    #crosshair.locked .cr-bl,
+    #crosshair.locked .cr-br { border-color:rgba(255,0,0,1); animation:none; }
+    #crosshair.locked .cr-tl::after { content:''; position:absolute; top:5px; left:5px;  width:18px; height:18px; border-style:solid; border-color:rgba(255,0,0,0.75); border-width:2px 0 0 2px; }
+    #crosshair.locked .cr-tr::after { content:''; position:absolute; top:5px; right:5px; width:18px; height:18px; border-style:solid; border-color:rgba(255,0,0,0.75); border-width:2px 2px 0 0; }
+    #crosshair.locked .cr-bl::after { content:''; position:absolute; bottom:5px; left:5px;  width:18px; height:18px; border-style:solid; border-color:rgba(255,0,0,0.75); border-width:0 0 2px 2px; }
+    #crosshair.locked .cr-br::after { content:''; position:absolute; bottom:5px; right:5px; width:18px; height:18px; border-style:solid; border-color:rgba(255,0,0,0.75); border-width:0 2px 2px 0; }
+    @keyframes pulse-lock {
+      from { border-color:rgba(255,160,0,0.4); }
+      to   { border-color:rgba(255,160,0,1.0); }
+    }
+
+    /* ── Lock label ─────────────────────────────────────────────────────────── */
+    #lock-label {
+      position:absolute; top:55%; left:50%; transform:translateX(-50%);
+      font-size:13px; letter-spacing:3px;
+      font-family:'Letrogo','Courier New',monospace;
+      color:#ff8800; text-shadow:0 0 8px #f80;
+      opacity:0; transition:opacity 0.1s;
+    }
+    #lock-label.active { opacity:1; }
+    #lock-label.active.locked { color:#ff1100; font-size:15px; text-shadow:0 0 14px #f00; }
+
+    /* ── Kill text ──────────────────────────────────────────────────────────── */
+    @keyframes kill-slam {
+      0%   { transform:translate(-50%,-50%) scaleX(4.0) scaleY(0.10) skewX(-18deg); filter:blur(12px) brightness(5); letter-spacing:40px; }
+      12%  { transform:translate(-50%,-50%) scale(1.25) skewX(6deg);  filter:blur(0) brightness(2.5); letter-spacing:10px; }
+      22%  { transform:translate(-50%,-50%) scale(0.88) skewX(-4deg); letter-spacing:16px; }
+      34%  { transform:translate(-50%,-50%) scale(1.08) skewX(2deg);  letter-spacing:12px; }
+      48%  { transform:translate(-50%,-50%) scale(0.96);              letter-spacing:14px; }
+      65%  { transform:translate(-50%,-50%) scale(1.02);              letter-spacing:14px; }
+      100% { transform:translate(-50%,-50%) scale(1.0);               letter-spacing:14px; }
+    }
+    #kill-text {
+      position:absolute; top:30%; left:50%; transform:translate(-50%,-50%);
+      font-size:88px; pointer-events:none; opacity:0;
+      font-family:'SoukouMincho','Courier New',monospace;
+      color:#ffee00; text-shadow:0 0 30px #ff8800, 0 0 60px #ff4400, 0 0 100px rgba(255,68,0,0.5);
+      letter-spacing:14px; white-space:nowrap;
+      -webkit-text-stroke:2px rgba(255,100,0,0.4);
+    }
+    #kill-text.slam { animation: kill-slam 0.55s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+    /* ── Auto-chase label ───────────────────────────────────────────────────── */
+    #chase-label {
+      position:absolute; top:40%; left:50%; transform:translateX(-50%);
+      font-size:13px; color:#00ffaa; text-shadow:0 0 10px #0fa;
+      font-family:'Letrogo','Courier New',monospace;
+      letter-spacing:4px; opacity:0; pointer-events:none; transition:opacity 0.2s;
+    }
+    #chase-label.active { opacity:1; }
+
+    /* ── Kill streak indicator ───────────────────────────────────────────── */
+    #streak-panel {
+      position:absolute; top:38px; left:18px;
+      font-size:13px; color:#ff8800; text-shadow:0 0 8px #f60;
+      font-family:'Letrogo','Courier New',monospace;
+      letter-spacing:2px; opacity:0; transition:opacity 0.3s;
+    }
+    #streak-panel.active { opacity:1; }
+
+    /* ── Barrage active label ────────────────────────────────────────────── */
+    #barrage-label {
+      position:absolute; top:38%; left:50%; transform:translateX(-50%);
+      font-size:16px; color:#ff4400; text-shadow:0 0 14px #f40, 0 0 30px #f20;
+      font-family:'Letrogo','Courier New',monospace;
+      letter-spacing:6px; opacity:0; pointer-events:none; transition:opacity 0.15s;
+    }
+    #barrage-label.active { opacity:1; animation:barrage-blink 0.2s infinite alternate; }
+    @keyframes barrage-blink { from{opacity:0.7} to{opacity:1.0} }
+
+    /* ── Transform flash ─────────────────────────────────────────────────── */
+    #transform-flash {
+      position:fixed; top:0; left:0; width:100%; height:100%;
+      background:rgba(255,100,0,0.55); pointer-events:none;
+      opacity:0; transition:opacity 0.12s;
+    }
+    #transform-flash.on { opacity:1; }
+
+    /* ── Transform text ──────────────────────────────────────────────────── */
+    @keyframes transform-slam {
+      0%   { transform:translate(-50%,-50%) scaleX(3.0) scaleY(0.15); filter:blur(10px) brightness(5); }
+      15%  { transform:translate(-50%,-50%) scale(1.15); filter:blur(0) brightness(2.5); }
+      30%  { transform:translate(-50%,-50%) scale(0.92); }
+      50%  { transform:translate(-50%,-50%) scale(1.05); }
+      100% { transform:translate(-50%,-50%) scale(1.0); }
+    }
+    #transform-text {
+      position:absolute; top:45%; left:50%; transform:translate(-50%,-50%);
+      font-size:52px; pointer-events:none; opacity:0;
+      font-family:'SoukouMincho','Courier New',monospace;
+      color:#ff6600; text-shadow:0 0 20px #ff4400, 0 0 50px #ff2200;
+      letter-spacing:10px; white-space:nowrap;
+    }
+    #transform-text.slam { animation: transform-slam 0.5s cubic-bezier(0.22,1,0.36,1) forwards; }
+
+    /* ── Stall warning ──────────────────────────────────────────────────────── */
+    #stall-label {
+      position:absolute; top:43%; left:50%; transform:translateX(-50%);
+      font-size:22px; font-weight:bold; letter-spacing:6px;
+      font-family:'Letrogo','Courier New',monospace;
+      color:#ff2200; text-shadow:0 0 18px #f00, 0 0 40px #f00;
+      opacity:0; transition:opacity 0.06s;
+    }
+    #stall-label.active { opacity:1; animation:stall-blink 0.32s infinite alternate; }
+    @keyframes stall-blink { from{opacity:0.7} to{opacity:1.0} }
+
+    /* ── Damage flash ───────────────────────────────────────────────────────── */
+    #damage-flash {
+      position:fixed; top:0; left:0; width:100%; height:100%;
+      background:rgba(255,0,0,0.38); pointer-events:none;
+      opacity:0; transition:opacity 0.1s;
+    }
+    #damage-flash.on { opacity:1; }
+
+    /* ── Altitude bar (right side) ──────────────────────────────────────────── */
+    #alt-panel {
+      position:absolute; top:50%; right:18px;
+      transform:translateY(-50%);
+      display:flex; flex-direction:column; align-items:center; gap:5px;
+    }
+    #alt-bar-bg {
+      width:18px; height:200px;
+      background:rgba(0,0,0,0.55);
+      border:1px solid rgba(100,200,255,0.45);
+      border-radius:6px;
+      box-shadow:0 0 10px rgba(0,180,255,0.18), inset 0 0 6px rgba(0,0,0,0.4);
+      display:flex; flex-direction:column; justify-content:flex-end;
+      overflow:hidden; position:relative;
+    }
+    /* 50% tick line */
+    #alt-bar-bg::before {
+      content:''; position:absolute; left:0; right:0;
+      top:50%; height:1px;
+      background:rgba(255,255,255,0.18); pointer-events:none;
+      z-index:1;
+    }
+    #alt-bar-fill {
+      width:100%; height:40%;
+      background:linear-gradient(to top,
+        #00e0ff  0%,
+        #00ff99 38%,
+        #aaff00 62%,
+        #ffcc00 80%,
+        #ff4400 100%
+      );
+      background-size:100% 200px;
+      background-position:bottom center;
+      border-radius:4px;
+      transition:height 0.12s;
+    }
+    #alt-num {
+      font-family:'Letrogo','Courier New',monospace;
+      font-size:11px; color:#aaddff; letter-spacing:1px;
+      text-align:center;
+    }
+    #alt-label-text {
+      font-family:'Letrogo','Courier New',monospace;
+      font-size:10px; color:rgba(150,220,255,0.55); letter-spacing:2px;
+    }
+
+    /* ── Boost / Flare cooldown bars (bottom-left) ──────────────────────────── */
+    #cd-panel {
+      position:absolute; bottom:18px; left:18px;
+      display:flex; flex-direction:column; gap:6px;
+    }
+    .cd-row {
+      display:flex; align-items:center; gap:8px;
+    }
+    .cd-label {
+      font-size:10px; color:rgba(200,230,255,0.7); letter-spacing:1px; width:90px;
+    }
+    .cd-segs {
+      display:flex; gap:2px; width:100px;
+    }
+    .seg {
+      flex:1; height:7px;
+      background:rgba(0,0,0,0.5);
+      border:1px solid rgba(100,200,255,0.2);
+      border-radius:2px;
+      transition:background 0.08s;
+    }
+    #boost-label {
+      font-size:10px; color:rgba(0,255,170,0.8); letter-spacing:1px; min-width:100px;
+    }
+
+    /* ── Mini-map ───────────────────────────────────────────────────────────── */
+    #minimap {
+      position:absolute; bottom:18px; right:60px;
+      border-radius:50%;
+    }
+
+    /* ── Controls hint ──────────────────────────────────────────────────────── */
+    #controls-hint {
+      position:absolute; bottom:18px; left:50%; transform:translateX(-50%);
+      font-size:11px; color:rgba(200,230,255,0.38); letter-spacing:1px;
+      text-align:center; line-height:1.7;
+    }
+
+    /* ── Overlay ────────────────────────────────────────────────────────────── */
+    #clear-screen.hidden { opacity:0; pointer-events:none; display:none !important; }
+    #overlay {
+      position:fixed; top:0; left:0; width:100%; height:100%;
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      background:rgba(0,10,30,0.85); color:#fff; transition:opacity 0.4s;
+    }
+    #overlay.hidden { opacity:0; pointer-events:none; }
+    #overlay-title {
+      font-size:54px; letter-spacing:8px; margin-bottom:12px;
+      color:#00ccff; text-shadow:0 0 22px #0af, 0 0 50px #0af;
+    }
+    #overlay-sub { font-size:18px; color:#aaddff; letter-spacing:2px; margin-bottom:8px; }
+    #overlay-restart {
+      font-size:16px; color:rgba(200,230,255,0.85); letter-spacing:3px;
+      margin-top:18px; text-shadow:0 0 8px rgba(100,180,255,0.5);
+    }
+    .overlay-hint {
+      font-size:13px; color:rgba(180,220,255,0.6);
+      margin-top:20px; line-height:2.1; text-align:center; letter-spacing:1px;
+    }
+
+    /* ══ Title Screen – Orange × Black Diagonal ═══════════════════════════════ */
+    #title-screen {
+      position:fixed; top:0; left:0; width:100%; height:100%;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      background:#080808;
+      z-index:200; overflow:hidden;
+      opacity:1;
+    }
+    #title-screen.hidden { opacity:0 !important; pointer-events:none; transition:opacity 0.35s; display:none; }
+    #title-screen.ts-visible { opacity:1; animation:none; }
+    @keyframes ts-screen-in { from{opacity:0} to{opacity:1} }
+
+    /* ── Background ─────────────────────────────────────────────────────────── */
+    #ts-bg {
+      position:absolute; inset:0; pointer-events:none; overflow:hidden;
+      /* 全体を覆う細い斜めストライプ */
+      background:repeating-linear-gradient(
+        -52deg,
+        transparent 0px, transparent 22px,
+        rgba(255,80,0,0.055) 22px, rgba(255,80,0,0.055) 24px
+      );
+    }
+    /* 静的な太い斜め帯 */
+    .ts-sl {
+      position:absolute;
+      width:var(--sw,55px); height:200%;
+      background:rgba(255,70,0,var(--so,0.10));
+      transform:rotate(-18deg);
+      transform-origin:top center;
+      left:var(--sl,10%); top:-50%;
+    }
+    /* オレンジパーティクル (下から浮上) */
+    .ts-pt {
+      position:absolute; width:3px; height:3px; border-radius:50%;
+      background:#ff6600; box-shadow:0 0 5px #ff4400;
+      left:var(--pl,50%); top:110%;
+      animation:ts-pt-rise var(--pf,9s) linear infinite;
+      animation-delay:var(--pd,0s);
+    }
+    @keyframes ts-pt-rise {
+      from { transform:translateY(0) scale(1); opacity:.9; }
+      75%  { opacity:.5; }
+      to   { transform:translateY(-115vh) scale(.3); opacity:0; }
+    }
+    /* 左下コーナー橙光 */
+    #ts-glow-orb {
+      position:absolute; inset:0; pointer-events:none;
+      background:
+        linear-gradient(to top right, rgba(255,60,0,0.20) 0%, transparent 42%),
+        linear-gradient(to bottom right, transparent 58%, rgba(255,40,0,0.06) 58%, rgba(255,40,0,0.06) 60%, transparent 60%);
+    }
+    /* スキャンライン */
+    #ts-scanlines {
+      position:absolute; inset:0; pointer-events:none;
+      background:repeating-linear-gradient(to bottom,
+        transparent 0px,transparent 2px,rgba(0,0,0,0.13) 2px,rgba(0,0,0,0.13) 3px);
+    }
+    /* ビネット */
+    #ts-vignette {
+      position:absolute; inset:0; pointer-events:none;
+      background:radial-gradient(ellipse at 50% 50%, transparent 32%, rgba(0,0,0,0.72) 100%);
+    }
+
+    /* ── ロゴ ────────────────────────────────────────────────────────────────── */
+    #ts-content {
+      position:relative; z-index:2;
+      display:flex; flex-direction:column; align-items:center;
+      pointer-events:auto;
+    }
+    #ts-logo-flash {
+      position:absolute; width:100%; height:100%; pointer-events:none; z-index:10;
+      background:radial-gradient(ellipse at 50% 35%, rgba(255,150,0,0.80) 0%, transparent 55%);
+      opacity:0;
+      animation:ts-lflash 0.55s 0.28s ease-out forwards;
+    }
+    @keyframes ts-lflash { 0%{opacity:.85} 100%{opacity:0} }
+
+    #ts-title {
+      font-family:'SoukouMincho',serif;
+      font-size:96px; font-weight:900; letter-spacing:16px;
+      color:#ffffff;
+      -webkit-text-stroke:4px #ff3300;
+      paint-order:stroke fill;
+      text-shadow:
+        5px  5px  0   #cc2000,
+        10px 10px 0   rgba(160,20,0,0.38),
+        0    0   28px rgba(255,110,0,0.75),
+        0    0   65px rgba(255,50,0,0.40);
+      margin-bottom:10px; line-height:1;
+      animation:
+        ts-logo-popin   0.52s cubic-bezier(0.22,1,0.36,1) 0.28s both,
+        ts-logo-breathe 3.2s  ease-in-out                  1.4s infinite alternate;
+    }
+    @keyframes ts-logo-popin {
+      0%   { opacity:0; transform:scale(0.52) translateY(-22px); filter:brightness(9) blur(5px); }
+      52%  { opacity:1; transform:scale(1.08) translateY(4px);   filter:brightness(2.8); }
+      74%  { transform:scale(0.97) translateY(-2px); filter:brightness(1.1); }
+      90%  { transform:scale(1.02) translateY(1px); }
+      100% { transform:scale(1.00) translateY(0);    filter:brightness(1); }
+    }
+    @keyframes ts-logo-breathe {
+      from { transform:scale(1.000); }
+      to   { transform:scale(1.048); filter:brightness(1.08); }
+    }
+
+    #ts-subtitle {
+      font-family:'SoukouMincho',serif;
+      font-size:12px; letter-spacing:10px;
+      color:#ff7700;
+      text-shadow:0 0 8px rgba(255,100,0,0.50);
+      margin-bottom:60px;
+      animation:ts-fade-up 0.48s 0.72s both;
+    }
+    @keyframes ts-fade-up {
+      from { opacity:0; transform:translateY(12px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    /* ── START ボタン ─────────────────────────────────────────────────────────── */
+    #ts-start-btn {
+      font-family:'SoukouMincho',serif;
+      font-size:42px; font-weight:900; letter-spacing:18px;
+      color:#ffffff;
+      background:#ff5000;
+      border:4px solid #ffffff;
+      padding:18px 80px;
+      cursor:pointer;
+      position:relative;
+      box-shadow:6px 6px 0 #000000, 0 0 22px rgba(255,80,0,0.65);
+      transform:skewX(-8deg);
+      opacity:0;
+      animation:ts-start-in 0.5s 0.9s cubic-bezier(0.22,1,0.36,1) both,
+               ts-btn-pulse 2.6s 2.0s ease-in-out infinite;
+      transition:transform 0.14s cubic-bezier(0.34,1.56,0.64,1), filter 0.12s ease;
+    }
+    #ts-start-btn::before {
+      content:''; position:absolute; inset:0; pointer-events:none;
+      background:repeating-linear-gradient(-52deg,
+        transparent 0px, transparent 12px,
+        rgba(0,0,0,0.12) 12px, rgba(0,0,0,0.12) 14px);
+    }
+    #ts-start-btn::after {
+      content:''; position:absolute; inset:0; pointer-events:none;
+      background:linear-gradient(to right, rgba(255,255,255,0.18) 0%, transparent 45%);
+    }
+    @keyframes ts-start-in {
+      from { opacity:0; transform:skewX(-8deg) translateY(30px) scale(0.8); filter:brightness(5); }
+      to   { opacity:1; transform:skewX(-8deg) translateY(0) scale(1); filter:brightness(1); }
+    }
+    @keyframes ts-btn-pulse {
+      0%,100% { border-color:#ffffff; box-shadow:6px 6px 0 #000, 0 0 22px rgba(255,80,0,0.65); }
+      50%     { border-color:#ffee00; box-shadow:6px 6px 0 #000, 0 0 38px rgba(255,180,0,0.95); }
+    }
+    #ts-start-btn:hover {
+      transform:skewX(-8deg) scale(1.06) translateY(-3px);
+      box-shadow:8px 8px 0 #000, 0 0 32px rgba(255,100,0,0.90);
+      filter:brightness(1.12);
+    }
+
+    /* 全体退場アニメーション */
+    #title-screen.ts-exiting {
+      animation: ts-screen-exit 0.52s cubic-bezier(0.4,0,1,1) forwards;
+      pointer-events: none;
+    }
+    @keyframes ts-screen-exit {
+      0%   { opacity:1; transform:scale(1)    translateY(0);   }
+      40%  { opacity:1; transform:scale(1.02) translateY(-4px);}
+      100% { opacity:0; transform:scale(0.95) translateY(12px);}
+    }
+
+    /* ── 画面フラッシュ ─────────────────────────────────────────────────────────── */
+    #ts-flash {
+      position:fixed; top:0; left:0; width:100%; height:100%;
+      background:#ff5500; opacity:0; pointer-events:none; z-index:300;
+    }
+    @keyframes ts-flash-anim { 0%{opacity:.82} 100%{opacity:0} }
+    #ts-flash.on { animation:ts-flash-anim 0.42s ease-out forwards; }
+  </style>
+  <script type="module" crossorigin src="/assets/index-dhMZFkNL.js"></script>
+</head>
+<body>
+  <div id="hud">
+    <div id="stage-label">STAGE 1</div>
+    <div id="hp-label">♥♥♥♥♥</div>
+    <div id="hp-segs-panel">
+      <div class="hp-seg" data-seg="0"></div>
+      <div class="hp-seg" data-seg="1"></div>
+      <div class="hp-seg" data-seg="2"></div>
+      <div class="hp-seg" data-seg="3"></div>
+      <div class="hp-seg" data-seg="4"></div>
+      <div class="hp-seg" data-seg="5"></div>
+    </div>
+    <div id="enemies-label">ENEMIES: 0</div>
+    <div id="enemies-wave" style="position:absolute;top:34px;right:210px;font-size:13px;color:#ff4400;text-shadow:0 0 6px #f00;opacity:0;transition:opacity 0.3s;"></div>
+    <div id="speed-label"><span id="speed-tag">SPEED</span><span id="speed-val">56</span><span id="speed-reason"></span></div>
+    <div id="buildings-label">残り建物 3/3</div>
+    <div id="infantry-label">歩兵: 0/0</div>
+
+    <div id="crosshair">
+      <span class="cr-tl"></span>
+      <span class="cr-tr"></span>
+      <span class="cr-bl"></span>
+      <span class="cr-br"></span>
+    </div>
+    <div id="kill-text">撃墜</div>
+    <div id="chase-label">⚡ AUTO CHASE</div>
+    <div id="lock-label">⊕  LOCK ON</div>
+    <div id="stall-label">!! STALL !!</div>
+    <div id="damage-flash"></div>
+    <div id="streak-panel">STREAK: 0/3</div>
+    <div id="transform-flash"></div>
+    <div id="transform-text"></div>
+    <div id="barrage-label">BARRAGE</div>
+
+    <!-- Altitude bar (right side) -->
+    <div id="alt-panel">
+      <div id="alt-label-text">ALT</div>
+      <div id="alt-bar-bg">
+        <div id="alt-bar-fill"></div>
+      </div>
+      <div id="alt-num">80</div>
+    </div>
+
+    <!-- Boost / Flare / Flip cooldown bars (bottom left) – segmented -->
+    <div id="cd-panel">
+      <div class="cd-row">
+        <div class="cd-label">BOOST [R]</div>
+        <div id="boost-segs" class="cd-segs">
+          <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
+        </div>
+        <div id="boost-label">BOOST  READY</div>
+      </div>
+      <div class="cd-row">
+        <div class="cd-label">FLIP  [F]</div>
+        <div id="flip-segs" class="cd-segs">
+          <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
+        </div>
+      </div>
+      <div class="cd-row">
+        <div class="cd-label" id="special-cd-label">SPECIAL [E]</div>
+        <div id="special-segs" class="cd-segs">
+          <span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span>
+        </div>
+        <div id="special-label" style="font-size:10px;color:rgba(255,136,0,0.8);letter-spacing:1px;min-width:100px">READY</div>
+      </div>
+    </div>
+
+    <!-- Mini-map -->
+    <canvas id="minimap" width="160" height="160"></canvas>
+
+    <div id="controls-hint">
+      マウス: 操縦 &nbsp;A/D: 旋回補助 &nbsp;W: 加速 &nbsp;S: 減速 &nbsp;R: ブースト &nbsp;F: 反転 &nbsp;E: 必殺技
+      &nbsp;右クリック(長押し): 機関銃 &nbsp;クリック: ミサイル(ロックオン後)
+      &nbsp;| 8秒以内に3機撃墜 → 機体変換!
+    </div>
+  </div>
+
+  <!-- ── Title Screen ─────────────────────────────────────────────────────── -->
+  <div id="title-screen">
+
+    <!-- Background: 太い斜め帯 + オレンジパーティクル -->
+    <div id="ts-bg">
+      <div id="ts-glow-orb"></div>
+      <!-- 静的な太い斜め帯 (左→右に均等配置) -->
+      <div class="ts-sl" style="--sl: -4%;--sw:70px;--so:0.16;"></div>
+      <div class="ts-sl" style="--sl:  9%;--sw:28px;--so:0.09;"></div>
+      <div class="ts-sl" style="--sl: 20%;--sw:55px;--so:0.13;"></div>
+      <div class="ts-sl" style="--sl: 34%;--sw:22px;--so:0.07;"></div>
+      <div class="ts-sl" style="--sl: 47%;--sw:80px;--so:0.15;"></div>
+      <div class="ts-sl" style="--sl: 63%;--sw:32px;--so:0.08;"></div>
+      <div class="ts-sl" style="--sl: 76%;--sw:60px;--so:0.12;"></div>
+      <div class="ts-sl" style="--sl: 90%;--sw:40px;--so:0.10;"></div>
+      <div class="ts-sl" style="--sl:102%;--sw:55px;--so:0.14;"></div>
+      <!-- オレンジパーティクル -->
+      <span class="ts-pt" style="--pl: 7%;--pf: 9s;--pd:0.0s;"></span>
+      <span class="ts-pt" style="--pl:19%;--pf: 7s;--pd:1.4s;"></span>
+      <span class="ts-pt" style="--pl:33%;--pf:11s;--pd:2.8s;"></span>
+      <span class="ts-pt" style="--pl:48%;--pf: 8s;--pd:0.6s;"></span>
+      <span class="ts-pt" style="--pl:61%;--pf:10s;--pd:3.5s;"></span>
+      <span class="ts-pt" style="--pl:75%;--pf: 6s;--pd:1.8s;"></span>
+      <span class="ts-pt" style="--pl:88%;--pf:13s;--pd:0.3s;"></span>
+      <span class="ts-pt" style="--pl:42%;--pf: 9s;--pd:4.6s;"></span>
+    </div>
+    <div id="ts-scanlines"></div>
+    <div id="ts-vignette"></div>
+
+    <!-- Logo flash -->
+    <div id="ts-logo-flash"></div>
+
+    <!-- Content -->
+    <div id="ts-content">
+      <div id="ts-title">AIR COMBAT</div>
+      <div id="ts-subtitle">空 中 戦 闘 シ ミ ュ レ ー タ ー</div>
+      <div id="ts-start-btn">S T A R T</div>
+    </div>
+  </div>
+  <div id="ts-flash"></div>
+
+  <!-- Clear screen (stage clear) -->
+  <div id="clear-screen" class="hidden" style="
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background:#000; z-index:150; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; cursor:pointer; transition:opacity 0.5s;
+  ">
+    <div style="position:relative; width:100%; height:100%;">
+      <img src="/clear_bg.png" style="width:100%; height:100%; object-fit:cover; filter:brightness(1.5);" />
+      <div id="clear-text" style="
+        position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+        font-family:'SoukouMincho','Courier New',monospace;
+        color:#eeddcc; text-shadow:0 0 10px rgba(0,0,0,0.9), 2px 2px 4px #000;
+        line-height:2.4; letter-spacing:3px; text-align:left;
+      ">
+        <div style="font-size:48px;opacity:0;">こうして全てが終わった</div>
+        <div style="font-size:48px;opacity:0;">いまわしきエネミーを</div>
+        <div style="font-size:48px;opacity:0;">エースパイロットが破壊した</div>
+      </div>
+      <div id="clear-stage-info" style="
+        position:absolute; top:8%; right:8%;
+        font-family:'Gisshiri','SoukouMincho',serif;
+        color:#ff2200; font-size:32px;
+        text-shadow:0 0 12px rgba(255,30,0,0.6);
+      "></div>
+      <div id="clear-sub" style="
+        position:absolute; bottom:5%; right:8%;
+        font-family:'SoukouMincho',monospace;
+        color:rgba(200,220,255,0.7); font-size:14px;
+      ">クリックで次へ</div>
+    </div>
+  </div>
+  <div id="clear-screen-style"></div>
+
+  <div id="overlay" class="hidden">
+    <div id="overlay-title">AIR COMBAT</div>
+    <div id="overlay-sub">クリックでスタート</div>
+    <div id="overlay-restart"></div>
+    <div class="overlay-hint">
+      <strong>マウスで機体を操縦（クリックでポインターロック取得）</strong><br>
+      A / D: 旋回補助 &nbsp;&nbsp; W: 加速 &nbsp;&nbsp; S: 減速<br>
+      R: ブースト（3倍速・旋回強化 / クールタイム10秒）&nbsp;&nbsp; F: 反転<br>
+      右クリック長押し: 機関銃（クールタイムなし・少量ダメージ）<br>
+      <br>
+      E: 必殺技（自機=自動追尾 / 変換後=ミサイル乱射5秒）<br>
+      敵を枠内に捉えてロックオン → クリック: 発射<br>
+      <strong>8秒以内に3機連続撃墜 → 敵機体に変換！必殺技も継承！</strong><br>
+      <strong>目標：建物を守れ！</strong>
+    </div>
+  </div>
+
+</body>
+</html>
