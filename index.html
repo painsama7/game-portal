@@ -5,107 +5,197 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GAME PORTAL</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
+  @font-face {
+    font-family:'SoukouMincho';
+    src:url('game3/SoukouMincho.ttf') format('truetype');
+  }
+  @font-face {
+    font-family:'Letrogo';
+    src:url('/851letrogo_007.ttf') format('truetype');
+  }
+  @font-face {
+    font-family:'Gisshiri';
+    src:url('Gisshiri.ttf') format('truetype');
+  }
+  * { margin:0; padding:0; box-sizing:border-box; user-select:none; }
   body {
     background:#0a0a0f;
     color:#fff;
-    font-family:'Segoe UI','Helvetica Neue',sans-serif;
-    min-height:100vh;
-    display:flex; flex-direction:column; align-items:center;
-    padding:40px 20px;
+    font-family:'Yu Mincho','Hiragino Mincho ProN','MS PMincho',serif;
+    overflow-x:hidden;
   }
-  h1 {
-    font-size:36px; letter-spacing:8px; margin-bottom:40px;
-    color:#ff6600; text-shadow:0 0 20px rgba(255,100,0,0.4);
+
+  header {
+    text-align:center;
+    padding:60px 20px 40px;
   }
-  .grid {
-    display:grid;
-    grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));
-    gap:24px; max-width:900px; width:100%;
+  header h1 {
+    font-size:84px; letter-spacing:16px; font-weight:900;
+    color:#ffdd00;
+    text-shadow:0 0 40px rgba(255,220,0,0.6), 0 0 80px rgba(255,180,0,0.3);
+    -webkit-text-stroke:4px #ffdd00;
   }
-  .card {
-    background:#14141e;
-    border:1px solid #333;
-    border-radius:10px;
-    overflow:hidden;
+  header p {
+    margin-top:12px; font-size:14px; color:#555; letter-spacing:3px;
+  }
+
+  .game-row {
+    display:flex;
+    align-items:center;
+    max-width:1400px;
+    margin:0 auto 80px;
+    padding:0 30px;
+    gap:40px;
     cursor:pointer;
-    transition:transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    transition:transform 0.2s;
   }
-  .card:hover {
-    transform:translateY(-4px);
-    box-shadow:0 8px 30px rgba(255,100,0,0.2);
-    border-color:#ff6600;
+  .game-row:hover {
+    transform:scale(1.01);
   }
-  .card-img {
-    width:100%; height:160px;
-    object-fit:cover;
-    border-bottom:1px solid #333;
+  .game-row.reverse {
+    flex-direction:row-reverse;
   }
-  .card-body { padding:16px; }
-  .card-title {
-    font-size:20px; font-weight:bold; margin-bottom:6px;
+
+  .game-img {
+    flex:0 0 80%;
+    border-radius:8px;
+    overflow:hidden;
+    box-shadow:0 4px 30px rgba(0,0,0,0.6);
+    transition:box-shadow 0.2s;
+  }
+  .game-row:hover .game-img {
+    box-shadow:0 4px 40px rgba(255,100,0,0.15);
+  }
+  .game-img img {
+    width:100%; height:auto; display:block;
+  }
+
+  .game-info {
+    flex:1;
+  }
+  .game-info h2 {
+    font-family:'Yu Mincho','Hiragino Mincho ProN','MS PMincho',serif;
+    font-size:24px; letter-spacing:6px; margin-bottom:12px; font-weight:900;
+    color:#eee;
+    -webkit-text-stroke:1px #eee;
+  }
+  .game-info .desc {
+    font-family:'Segoe UI','Helvetica Neue','Yu Gothic',sans-serif;
+    font-size:14px; color:#888; line-height:1.8;
+    margin-bottom:10px;
+  }
+  .game-info .tag {
+    font-size:12px; color:#666; letter-spacing:2px;
+  }
+
+  .play-btn {
+    display:block;
+    margin-top:18px;
+    padding:12px 0;
+    background:#ff6600;
+    color:#000;
+    font-family:'Yu Mincho','Hiragino Mincho ProN','MS PMincho',serif;
+    font-size:18px;
+    font-weight:900;
+    -webkit-text-stroke:1px #000;
+    letter-spacing:8px;
+    text-align:center;
+    border-radius:4px;
+    transition:background 0.15s, box-shadow 0.15s;
+    box-shadow:0 0 12px rgba(255,100,0,0.2);
+  }
+  .game-row:hover .play-btn {
+    background:#ff8800;
+    box-shadow:0 0 24px rgba(255,100,0,0.5);
+  }
+
+  footer {
+    text-align:center;
+    padding:40px;
+    color:#333;
+    font-size:12px;
     letter-spacing:2px;
   }
-  .card-desc {
-    font-size:13px; color:#888; line-height:1.5;
+
+  @media (max-width: 768px) {
+    .game-row, .game-row.reverse { flex-direction:column; gap:20px; padding:0 20px; }
+    .game-img { flex:none; width:100%; }
+    header h1 { font-size:28px; }
   }
-  .card-tag {
-    display:inline-block; margin-top:10px;
-    padding:2px 10px; border-radius:3px;
-    font-size:11px; letter-spacing:1px;
-  }
-  .tag-3d { background:#1a3a5c; color:#4da6ff; }
-  .tag-2d { background:#3a2a1a; color:#ffaa44; }
 </style>
 </head>
 <body>
-  <h1>GAME PORTAL</h1>
-  <div class="grid">
 
-    <div class="card" onclick="location.href='game3/'">
-      <div style="width:100%;height:160px;background:linear-gradient(135deg,#1a1a2e,#2a1a0a);display:flex;align-items:center;justify-content:center;">
-        <span style="font-size:48px;color:#ff4400;text-shadow:0 0 20px #f40;">AIR COMBAT</span>
-      </div>
-      <div class="card-body">
-        <div class="card-title">AIR COMBAT</div>
-        <div class="card-desc">3D空戦シューティング。28ステージ、4タイプの敵機、必殺技変換システム。</div>
-        <span class="card-tag tag-3d">3D</span>
-      </div>
-    </div>
+<header>
+  <h1>ペインゲーム</h1>
+  <p>4 TITLES</p>
+</header>
 
-    <div class="card" onclick="location.href='game7/'">
-      <div style="width:100%;height:160px;background:linear-gradient(135deg,#0a1a0a,#1a2a1a);display:flex;align-items:center;justify-content:center;">
-        <span style="font-size:48px;color:#00cc44;text-shadow:0 0 20px #0c4;">FLAG CLIMB</span>
-      </div>
-      <div class="card-body">
-        <div class="card-title">FLAG CLIMB</div>
-        <div class="card-desc">キューブが隆起するステージを登れ。</div>
-        <span class="card-tag tag-3d">3D</span>
-      </div>
-    </div>
-
-    <div class="card" onclick="location.href='game8/'">
-      <div style="width:100%;height:160px;background:linear-gradient(135deg,#1a1a2e,#0a1a2a);display:flex;align-items:center;justify-content:center;">
-        <span style="font-size:48px;color:#00b4d8;text-shadow:0 0 20px #0bd;">TANK BATTLE</span>
-      </div>
-      <div class="card-body">
-        <div class="card-title">TANK BATTLE 3D</div>
-        <div class="card-desc">3D戦車バトル。表24ステージ+裏24ステージ、ボス戦、チャージ弾。</div>
-        <span class="card-tag tag-3d">3D</span>
-      </div>
-    </div>
-
-    <div class="card" onclick="location.href='game9slot/'">
-      <div style="width:100%;height:160px;background:linear-gradient(135deg,#2a1a2a,#1a0a1a);display:flex;align-items:center;justify-content:center;">
-        <span style="font-size:48px;color:#ffcc00;text-shadow:0 0 20px #fc0;">SLOT RPG</span>
-      </div>
-      <div class="card-body">
-        <div class="card-title">SLOT RPG</div>
-        <div class="card-desc">スロットで戦う異色RPG。</div>
-        <span class="card-tag tag-2d">2D</span>
-      </div>
-    </div>
-
+<div class="game-row" onclick="location.href='game3/'">
+  <div class="game-img">
+    <img src="ss_game3.webp" alt="Air Combat">
   </div>
+  <div class="game-info">
+    <h2>エアコンバット</h2>
+    <div class="desc">
+      3D空戦シューティング。全28ステージ。<br>
+      4タイプの敵機を撃墜し、管制塔を守れ。<br>
+      敵機体を奪取して必殺技を変換。
+    </div>
+    <div class="tag">3D SHOOTER</div>
+    <div class="play-btn">あそぶ</div>
+  </div>
+</div>
+
+<div class="game-row reverse" onclick="location.href='game7/'">
+  <div class="game-img">
+    <img src="ss_game7.webp" alt="Flag Climb">
+  </div>
+  <div class="game-info">
+    <h2>りゅうきゲーム</h2>
+    <div class="desc">
+      隆起するキューブの塔を駆け上がれ。<br>
+      制限時間内にフラッグを目指す3Dアクション。<br>
+      二段ジャンプで高みへ。
+    </div>
+    <div class="tag">3D ACTION</div>
+    <div class="play-btn">あそぶ</div>
+  </div>
+</div>
+
+<div class="game-row" onclick="location.href='game8/'">
+  <div class="game-img">
+    <img src="ss_game8.webp" alt="Tank Battle">
+  </div>
+  <div class="game-info">
+    <h2>戦車道</h2>
+    <div class="desc">
+      3D戦車バトル。表24+裏24の全48ステージ。<br>
+      通常弾とチャージ弾を使い分けて敵を殲滅。<br>
+      ワープポータルで戦況を覆せ。
+    </div>
+    <div class="tag">3D BATTLE</div>
+    <div class="play-btn">あそぶ</div>
+  </div>
+</div>
+
+<div class="game-row reverse" onclick="location.href='game9slot/'">
+  <div class="game-img">
+    <img src="ss_game9slot.webp" alt="Slot RPG">
+  </div>
+  <div class="game-info">
+    <h2>スロット RPG</h2>
+    <div class="desc">
+      スロットで戦う異色RPG。<br>
+      20ステージ+ストーリー。<br>
+      運と戦略で強敵を倒せ。
+    </div>
+    <div class="tag">2D RPG</div>
+    <div class="play-btn">あそぶ</div>
+  </div>
+</div>
+
+<footer>ペインゲーム</footer>
+
 </body>
 </html>
