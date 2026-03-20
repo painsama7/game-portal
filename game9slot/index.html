@@ -4,8 +4,6 @@
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6052048572694342" crossorigin="anonymous"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&display=swap" rel="stylesheet">
 <title>スロットRPG - スロットで戦う異色RPG | ペインゲーム</title>
 <meta name="description" content="スロットで戦う異色RPG。20ステージ+ストーリー。運と戦略で強敵を倒せ。">
 <meta property="og:title" content="スロットRPG - スロットで戦う異色RPG">
@@ -13,6 +11,9 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://pain-game.com/game9slot/">
 <link rel="canonical" href="https://pain-game.com/game9slot/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&display=swap" rel="stylesheet">
+<title>SLOT RPG</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -328,6 +329,56 @@ body {
 @keyframes fukutsuSpin {
   0% { transform: translateY(calc(-1 * var(--fk-h))); }
   100% { transform: translateY(0); }
+}
+/* ── スマホ対応 ── */
+@media (max-width: 768px) {
+  body { overflow-y: auto; }
+  #stage-display { top: 4px; left: 4px; padding: 4px 8px; }
+  .stage-row { font-size: 11px; }
+  .stage-row.current { font-size: 14px; }
+  #max-stage { font-size: 10px; }
+  #enemy-info { min-width: auto; width: 90%; margin-top: 60px; padding: 6px 8px; }
+  #enemy-name { font-size: 16px; }
+  .enemy-stat .value { font-size: 20px; }
+  .enemy-stat .rank { font-size: 22px; }
+  .enemy-stat .label { font-size: 9px; }
+  #enemy-taunt { font-size: 11px; }
+  #player-info { top: 4px; right: 4px; padding: 4px 8px; }
+  #player-label { font-size: 10px; }
+  .player-stat .value { font-size: 16px; }
+  .player-stat .rank { font-size: 22px; }
+  .player-stat .gain { font-size: 10px; }
+  #slot-area { margin-top: 8px; gap: 10px; }
+  #slot-label { font-size: 10px; }
+  #reels { gap: 4px; }
+  .reel { width: 90px; height: 220px; }
+  .reel .select-line { height: 54px; transform: translateY(-42%); }
+  .reel-item { width: 90px; height: 52px; gap: 3px; }
+  .reel-item .icon { font-size: 18px; width: 24px; }
+  .reel-item .item-name { font-size: 11px; }
+  .reel-item .item-value { font-size: 10px; }
+  #spin-btn, #stop-btn { padding: 10px 30px; font-size: 16px; }
+  #result-text { font-size: 14px; }
+  #spins-left { font-size: 11px; }
+  #battle-hud { gap: 100px; top: 10px; }
+  .battle-side .b-icon { font-size: 32px; }
+  .battle-side .b-name { font-size: 14px; }
+  .battle-side .b-hp { font-size: 24px; }
+  .battle-side .b-sub { font-size: 10px; }
+  #battle-overlay { padding-top: 140px; }
+  #battle-action { font-size: 16px; }
+  #battle-action.result-text { font-size: 36px; }
+  #battle-damage { font-size: 30px; }
+  #battle-log { width: 90vw; max-height: 200px; }
+  .turn-row { gap: 16px; padding: 4px 0; margin-bottom: 6px; }
+  .turn-left, .turn-right { width: auto; max-width: 40vw; }
+  .turn-center { width: 40px; font-size: 32px; }
+  .turn-atk, .turn-def { font-size: 18px; }
+  .turn-dmg { font-size: 22px; }
+  .turn-block, .turn-cost { font-size: 14px; }
+  #overlay-text { font-size: 28px; }
+  #overlay-log { width: 90vw; font-size: 16px; }
+  #title-screen h1 { font-size: 40px; }
 }
 </style>
 </head>

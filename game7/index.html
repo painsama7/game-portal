@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6052048572694342" crossorigin="anonymous"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6052048572694342" crossorigin="anonymous"></script>
   <title>りゅうきゲーム - 3Dキューブアクション | ペインゲーム</title>
   <meta name="description" content="隆起するキューブの塔を駆け上がれ。制限時間内にフラッグを目指す3Dアクションゲーム。">
   <meta property="og:title" content="りゅうきゲーム - 3Dキューブアクション">
@@ -302,7 +302,7 @@
       #continue-buttons button { font-size: 22px; padding: 12px 36px; }
     }
   </style>
-  <script type="module" crossorigin src="./assets/index-oqo-Llgg.js"></script>
+  <script type="module" crossorigin src="./assets/index-CsE5hsfp.js"></script>
 </head>
 <body class="title">
   <div id="hud">
@@ -348,5 +348,12 @@
   </div>
   <div id="message">LEFT CLICK TO START</div>
   <div id="controls">移動: WASD / 矢印キー　　ジャンプ: スペース</div>
+  <!-- モバイルタッチUI -->
+  <div id="touch-controls" style="display:none;">
+    <div id="touch-stick" style="position:fixed;bottom:30px;left:30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,0.15);border:2px solid rgba(255,255,255,0.3);touch-action:none;z-index:100;">
+      <div id="touch-knob" style="position:absolute;top:50%;left:50%;width:44px;height:44px;margin:-22px;border-radius:50%;background:rgba(255,255,255,0.4);pointer-events:none;"></div>
+    </div>
+    <div id="touch-jump" style="position:fixed;bottom:40px;right:30px;width:80px;height:80px;border-radius:50%;background:rgba(100,200,255,0.25);border:2px solid rgba(100,200,255,0.5);display:flex;align-items:center;justify-content:center;font-size:14px;color:rgba(255,255,255,0.7);font-weight:bold;touch-action:none;z-index:100;">JUMP</div>
+  </div>
 </body>
 </html>
