@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://pain-game.com/sitemap.xml
