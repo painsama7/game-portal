@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6052048572694342" crossorigin="anonymous"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6052048572694342" crossorigin="anonymous"></script>
   <title>戦車道 - 3D戦車バトル | ペインゲーム</title>
   <meta name="description" content="3D戦車バトルゲーム。表24+裏24の全48ステージ。通常弾とチャージ弾を使い分けて敵を殲滅。">
   <meta property="og:title" content="戦車道 - 3D戦車バトル">
@@ -170,8 +170,25 @@
       color: rgba(255,255,255,0.5); font-size: 13px;
       pointer-events: none; text-align: center;
     }
+    /* ── スマホ対応 ── */
+    @media (max-width: 768px) {
+      #hud-hp { top: 6px; left: 6px; }
+      #hud-hp .label { font-size: 8px; }
+      .hp-seg { width: 22px; height: 10px; }
+      #charge-bar-wrap { width: 90px; height: 8px; }
+      #charge-status { font-size: 9px; }
+      #hud-stage { top: 6px; right: 6px; font-size: 12px; }
+      #enemy-count { font-size: 18px; }
+      #progress-wrap { width: 100px; height: 100px; }
+      #progress-text { font-size: 14px; }
+      #hud-bottom { display: none; }
+      #crosshair { font-size: 16px; }
+      #overlay-text { font-size: 32px; }
+      #overlay-sub { font-size: 14px; }
+      #overlay-btn { font-size: 13px; padding: 6px 18px; }
+    }
   </style>
-  <script type="module" crossorigin src="./assets/index--d74otcL.js"></script>
+  <script type="module" crossorigin src="./assets/index-CdTG8o0d.js"></script>
 </head>
 <body>
   <div id="hud-hp">
@@ -205,6 +222,15 @@
   </div>
 
   <div id="lock-hint">クリックでポインターロック（マウス操作開始）</div>
+
+  <!-- モバイルタッチUI -->
+  <div id="touch-controls" style="display:none;">
+    <div id="touch-stick" style="position:fixed;bottom:30px;left:20px;width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,0.1);border:2px solid rgba(255,255,255,0.25);touch-action:none;z-index:100;">
+      <div id="touch-knob" style="position:absolute;top:50%;left:50%;width:40px;height:40px;margin:-20px;border-radius:50%;background:rgba(255,255,255,0.35);pointer-events:none;"></div>
+    </div>
+    <div id="touch-fire" style="position:fixed;bottom:30px;right:20px;width:70px;height:70px;border-radius:50%;background:rgba(255,100,50,0.25);border:2px solid rgba(255,100,50,0.5);display:flex;align-items:center;justify-content:center;font-size:11px;color:rgba(255,255,255,0.7);font-weight:bold;touch-action:none;z-index:100;">FIRE</div>
+    <div id="touch-next" style="position:fixed;bottom:30px;left:50%;transform:translateX(-50%);width:60px;height:60px;border-radius:50%;background:rgba(100,200,100,0.2);border:2px solid rgba(100,200,100,0.4);display:none;align-items:center;justify-content:center;font-size:11px;color:rgba(255,255,255,0.6);font-weight:bold;touch-action:none;z-index:100;">NEXT</div>
+  </div>
 
   <div id="overlay">
     <div id="overlay-text">GAME OVER</div>
