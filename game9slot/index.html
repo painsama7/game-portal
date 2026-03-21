@@ -13,7 +13,6 @@
 <link rel="canonical" href="https://pain-game.com/game9slot/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&display=swap" rel="stylesheet">
-<title>SLOT RPG</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -333,21 +332,9 @@ body {
 /* ── スマホ対応 ── */
 @media (max-width: 768px) {
   body { overflow-y: auto; }
-  #stage-display { top: 4px; left: 4px; padding: 4px 8px; }
-  .stage-row { font-size: 11px; }
-  .stage-row.current { font-size: 14px; }
-  #max-stage { font-size: 10px; }
-  #enemy-info { min-width: auto; width: 90%; margin-top: 60px; padding: 6px 8px; }
-  #enemy-name { font-size: 16px; }
-  .enemy-stat .value { font-size: 20px; }
-  .enemy-stat .rank { font-size: 22px; }
-  .enemy-stat .label { font-size: 9px; }
-  #enemy-taunt { font-size: 11px; }
-  #player-info { top: 4px; right: 4px; padding: 4px 8px; }
-  #player-label { font-size: 10px; }
-  .player-stat .value { font-size: 16px; }
-  .player-stat .rank { font-size: 22px; }
-  .player-stat .gain { font-size: 10px; }
+  #stage-display { top: 4px; left: 4px; transform: scale(0.2); transform-origin: top left; }
+  #player-info { top: 4px; right: 4px; transform: scale(0.2); transform-origin: top right; }
+  #enemy-info { min-width: auto; width: 90%; margin-top: 10px; transform: scale(0.2); transform-origin: top center; }
   #slot-area { margin-top: 8px; gap: 10px; }
   #slot-label { font-size: 10px; }
   #reels { gap: 4px; }
@@ -360,11 +347,7 @@ body {
   #spin-btn, #stop-btn { padding: 10px 30px; font-size: 16px; }
   #result-text { font-size: 14px; }
   #spins-left { font-size: 11px; }
-  #battle-hud { gap: 100px; top: 10px; }
-  .battle-side .b-icon { font-size: 32px; }
-  .battle-side .b-name { font-size: 14px; }
-  .battle-side .b-hp { font-size: 24px; }
-  .battle-side .b-sub { font-size: 10px; }
+  #battle-hud { gap: 100px; top: 10px; transform: scale(0.2); transform-origin: top center; }
   #battle-overlay { padding-top: 140px; }
   #battle-action { font-size: 16px; }
   #battle-action.result-text { font-size: 36px; }
@@ -379,6 +362,7 @@ body {
   #overlay-text { font-size: 28px; }
   #overlay-log { width: 90vw; font-size: 16px; }
   #title-screen h1 { font-size: 40px; }
+  #battle-trait { transform: scale(0.2); transform-origin: bottom center; }
 }
 </style>
 </head>
