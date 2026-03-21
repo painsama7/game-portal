@@ -332,9 +332,9 @@ body {
 /* ── スマホ対応 ── */
 @media (max-width: 768px) {
   body { overflow-y: auto; }
-  #stage-display { top: 4px; left: 4px; transform: scale(0.2); transform-origin: top left; }
-  #player-info { top: 4px; right: 4px; transform: scale(0.2); transform-origin: top right; }
-  #enemy-info { min-width: auto; width: 90%; margin-top: 10px; transform: scale(0.2); transform-origin: top center; }
+  #stage-display { top: 4px; left: 4px; transform: scale(0.46); transform-origin: top left; }
+  #player-info { top: 4px; right: 4px; transform: scale(0.46); transform-origin: top right; }
+  #enemy-info { min-width: auto; width: 90%; margin-top: 10px; transform: scale(0.46); transform-origin: top center; }
   #slot-area { margin-top: 8px; gap: 10px; }
   #slot-label { font-size: 10px; }
   #reels { gap: 4px; }
@@ -347,7 +347,7 @@ body {
   #spin-btn, #stop-btn { padding: 10px 30px; font-size: 16px; }
   #result-text { font-size: 14px; }
   #spins-left { font-size: 11px; }
-  #battle-hud { gap: 100px; top: 10px; transform: scale(0.2); transform-origin: top center; }
+  #battle-hud { gap: 100px; top: 10px; transform: scale(0.46); transform-origin: top center; }
   #battle-overlay { padding-top: 140px; }
   #battle-action { font-size: 16px; }
   #battle-action.result-text { font-size: 36px; }
@@ -362,7 +362,7 @@ body {
   #overlay-text { font-size: 28px; }
   #overlay-log { width: 90vw; font-size: 16px; }
   #title-screen h1 { font-size: 40px; }
-  #battle-trait { transform: scale(0.2); transform-origin: bottom center; }
+  #battle-trait { transform: scale(0.46); transform-origin: bottom center; }
 }
 </style>
 </head>
@@ -807,7 +807,8 @@ function buildReelStrip(reelIdx) {
   strip.innerHTML = html;
   reelItems[reelIdx] = shifted;
 
-  const totalH = patLen * ITEM_H;
+  const actualItemH = strip.querySelector('.reel-item')?.offsetHeight || ITEM_H;
+  const totalH = patLen * actualItemH;
   const s = stage; // 0-indexed
   const speed = 0.007745 * s * s - 0.276106 * s + 3.25; // 二次曲線: 1章3.25→12章1.15→20章0.8
   strip.style.transition = 'none';
@@ -831,13 +832,15 @@ function stopReel(reelIdx) {
   strip.style.transform = `translateY(${currentY}px)`;
   strip.offsetHeight;
 
+  const actualItemH = reelEl.querySelector('.reel-item')?.offsetHeight || ITEM_H;
+  const actualReelCenter = reelEl.offsetHeight / 2;
   const patLen = REEL_PATTERN.length;
-  const rawIdx = (REEL_CENTER - ITEM_H / 2 - currentY) / ITEM_H;
+  const rawIdx = (actualReelCenter - actualItemH / 2 - currentY) / actualItemH;
   const nearestAbsIdx = Math.round(rawIdx);
   const patIdx = ((nearestAbsIdx % patLen) + patLen) % patLen;
   reelStoppedItem[reelIdx] = reelItems[reelIdx][patIdx];
 
-  const snapY = REEL_CENTER - ITEM_H / 2 - nearestAbsIdx * ITEM_H;
+  const snapY = actualReelCenter - actualItemH / 2 - nearestAbsIdx * actualItemH;
   strip.style.transition = 'transform 0.25s cubic-bezier(0.2, 0.8, 0.3, 1)';
   strip.style.transform = `translateY(${snapY}px)`;
   reelEl.classList.add('stopped');
@@ -1403,7 +1406,9 @@ function initReels() {
     for (let j = 0; j < REEL_PATTERN.length; j++) html += makeReelItem(REEL_PATTERN[(j + offset) % REEL_PATTERN.length]);
     strip.innerHTML = html;
     // Center item index 1 in the select line
-    strip.style.transform = `translateY(${REEL_CENTER - ITEM_H / 2 - ITEM_H}px)`;
+    const _ih = strip.querySelector('.reel-item')?.offsetHeight || ITEM_H;
+    const _rc = el.offsetHeight / 2;
+    strip.style.transform = `translateY(${_rc - _ih / 2 - _ih}px)`;
     el.classList.remove('stopped');
   }
 }
